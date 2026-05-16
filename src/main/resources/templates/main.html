@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="utf-8">
+    <title>Банк</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
+</head>
+
+<body class="bg-light">
+    <div class="alert alert-danger vstack" role="alert" th:if="${errors!=null}" th:each="error : ${errors}">
+        <span th:text="${error}"/>
+    </div>
+    <div class="alert alert-success" role="alert" th:if="${info!=null}" th:text="${info}"/>
+    <div class="container p-2">
+        <div class="row p-2">
+            <div class="col">
+                <div class="hstack gap-3">
+                    <h2>
+                        <span class="badge text-bg-info text-white">Банк</span>
+                    </h2>
+                </div>
+            </div>
+        </div>
+        <div class="row p-2">
+            <div class="col">
+                <div class="card">
+                    <div class="card-header">
+                        Обо мне
+                    </div>
+                    <div class="card-body gap-3">
+                        <form method="post" action="/account">
+                            <div class="form-group">
+                                <h6>
+                                    <label for="name">Фамилия Имя</label>
+                                </h6>
+                                <p>
+                                    <input type="text" class="form-control" id="name" name="name" placeholder="Иванов Иван" th:value="${name}" required>
+                                </p>
+                            </div>
+                            <div class="form-group">
+                                <h6>
+                                    <label for="birthdate">Дата рождения</label>
+                                </h6>
+                                <p>
+                                    <input type="date" class="form-control" name="birthdate" id="birthdate" th:value="${birthdate}" required>
+                                </p>
+                            </div>
+                            <div class="form-group">
+                                <h6>Сумма на счету, руб</h6>
+                                <p th:text="${sum}"/>
+                            </div>
+                            <button type="submit" class="btn btn-secondary">Сохранить изменения</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="row p-2">
+            <div class="col">
+                <div class="card">
+                    <div class="card-header">
+                        Операции с наличными
+                    </div>
+                    <div class="card-body gap-3">
+                        <form method="post" action="/cash">
+                            <div class="form-group">
+                                <h6>
+                                    <label for="cash_value">Сумма, руб.</label>
+                                </h6>
+                                <p>
+                                    <input type="number" class="form-control" id="cash_value" name="value" placeholder="100" required>
+                                </p>
+                            </div>
+                            <button type="submit" class="btn btn-secondary" name="action" value="PUT">Положить</button>
+                            <button type="submit" class="btn btn-secondary" name="action" value="GET">Снять</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="row p-2">
+            <div class="col">
+                <div class="card">
+                    <div class="card-header">
+                        Переводы
+                    </div>
+                    <div class="card-body gap-3">
+                        <form method="post" action="/transfer">
+                            <div class="form-group">
+                                <h6>
+                                    <label for="to_account">Кому</label>
+                                </h6>
+                                <p>
+                                    <select class="form-select" id="to_account" name="login" required>
+                                        <option th:each="account : ${accounts}" th:value="${account.login}" th:text="${account.name}"/>
+                                    </select>
+                                </p>
+                            </div>
+                            <div class="form-group">
+                                <h6>
+                                    <label for="transfer_value">Сумма, руб.</label>
+                                </h6>
+                                <p>
+                                    <input type="text" class="form-control" name="value" id="transfer_value" placeholder="100" required>
+                                </p>
+                            </div>
+                            <button type="submit" class="btn btn-secondary">Перевести</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>
