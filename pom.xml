@@ -29,6 +29,7 @@
         <module>services/cash</module>
         <module>services/transfer</module>
         <module>services/notifications</module>
+        <module>infra/gateway</module>
     </modules>
 
     <dependencyManagement>
