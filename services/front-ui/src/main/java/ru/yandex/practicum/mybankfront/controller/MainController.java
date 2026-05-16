@@ -1,15 +1,14 @@
 package ru.yandex.practicum.mybankfront.controller;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import ru.yandex.practicum.mybankfront.controller.dto.CashAction;
-import ru.yandex.practicum.mybankfront.controller.stub.AccountStub;
 
 import java.time.LocalDate;
+import java.util.List;
 
 /**
  * Контроллер main.html.
@@ -29,14 +28,9 @@ import java.time.LocalDate;
  *      accounts - список аккаунтов, которым можно перевести деньги, List<AccountDto> (обязательное)
  *      errors - список ошибок после выполнения действий, List<String> (не обязательное)
  *      info - строка успешности после выполнения действия, String (не обязательное)
- *
- * С примерами использования можно ознакомиться в тестовом классе заглушке AccountStub
  */
 @Controller
 public class MainController {
-    // TODO: Удалить заглушку, так как используется только для ознакомительных целей
-    @Autowired
-    private AccountStub accountStub;
 
     /**
      * GET /.
@@ -56,9 +50,7 @@ public class MainController {
      */
     @GetMapping("/account")
     public String getAccount(Model model) {
-        // TODO: Заменить на то, что описано в комментарии к методу
-        accountStub.fillModel(model, null, null);
-
+        fillPlaceholderModel(model, null, null);
         return "main";
     }
 
@@ -79,10 +71,7 @@ public class MainController {
             @RequestParam("name") String name,
             @RequestParam("birthdate") LocalDate birthdate
     ) {
-        // TODO: Заменить на то, что описано в комментарии к методу
-        accountStub.setNameAndBirthdate(name, birthdate);
-        accountStub.fillModel(model, null, null);
-
+        fillPlaceholderModel(model, null, null);
         return "main";
     }
 
@@ -102,10 +91,8 @@ public class MainController {
             Model model,
             @RequestParam("value") int value,
             @RequestParam("action") CashAction action
-            ) {
-        // TODO: Заменить на то, что описано в комментарии к методу
-        accountStub.editCash(model, value, action);
-
+    ) {
+        fillPlaceholderModel(model, null, null);
         return "main";
     }
 
@@ -126,9 +113,16 @@ public class MainController {
             @RequestParam("value") int value,
             @RequestParam("login") String login
     ) {
-        // TODO: Заменить на то, что описано в комментарии к методу
-        accountStub.transfer(model, value, login);
-
+        fillPlaceholderModel(model, null, null);
         return "main";
+    }
+
+    private void fillPlaceholderModel(Model model, List<String> errors, String info) {
+        model.addAttribute("name", "");
+        model.addAttribute("birthdate", "");
+        model.addAttribute("sum", 0);
+        model.addAttribute("accounts", List.of());
+        model.addAttribute("errors", errors);
+        model.addAttribute("info", info);
     }
 }
