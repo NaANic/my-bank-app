@@ -25,6 +25,10 @@
 
     <modules>
         <module>services/front-ui</module>
+        <module>services/accounts</module>
+        <module>services/cash</module>
+        <module>services/transfer</module>
+        <module>services/notifications</module>
     </modules>
 
     <dependencyManagement>
