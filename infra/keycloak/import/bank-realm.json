@@ -424,6 +424,51 @@
         "bank:service"
       ],
       "optionalClientScopes": []
+    },
+    {
+      "clientId": "transfer",
+      "name": "Bank Transfer Service",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "transfer-service-secret",
+      "protocol": "openid-connect",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "defaultClientScopes": [
+        "bank:service"
+      ],
+      "optionalClientScopes": []
+    },
+    {
+      "clientId": "accounts",
+      "name": "Bank Accounts Service",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "accounts-service-secret",
+      "protocol": "openid-connect",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "defaultClientScopes": [
+        "bank:service"
+      ],
+      "optionalClientScopes": []
+    },
+    {
+      "clientId": "notifications",
+      "name": "Bank Notifications Service",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "notifications-service-secret",
+      "protocol": "openid-connect",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "defaultClientScopes": [
+        "bank:service"
+      ],
+      "optionalClientScopes": []
     }
   ],
   "users": [
