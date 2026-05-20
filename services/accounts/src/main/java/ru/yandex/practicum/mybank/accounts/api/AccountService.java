@@ -7,6 +7,7 @@ import ru.yandex.practicum.mybank.accounts.domain.Account;
 import ru.yandex.practicum.mybank.accounts.domain.AccountRepository;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.NoSuchElementException;
 
 @Service
@@ -52,6 +53,39 @@ public class AccountService {
         Account account = requireExisting(login);
         account.setBalance(account.getBalance().add(amount));
         return toDto(repository.save(account));
+    }
+
+    public List<AccountSummary> listOthers(String login) {
+        return repository.findAll().stream()
+                .filter(a -> !a.getLogin().equals(login))
+                .map(a -> new AccountSummary(a.getLogin(), fullName(a)))
+                .toList();
+    }
+
+    @Transactional
+    public AccountDto transfer(String fromLogin, String toLogin, BigDecimal amount) {
+        requirePositive(amount);
+        if (fromLogin.equals(toLogin)) {
+            throw new IllegalArgumentException("Cannot transfer to the same account");
+        }
+        Account from = requireExisting(fromLogin);
+        Account to = requireExisting(toLogin);
+        if (from.getBalance().compareTo(amount) < 0) {
+            throw new InsufficientFundsException(fromLogin, amount, from.getBalance());
+        }
+        from.setBalance(from.getBalance().subtract(amount));
+        to.setBalance(to.getBalance().add(amount));
+        repository.save(to);
+        return toDto(repository.save(from));
+    }
+
+    private static String fullName(Account a) {
+        String last = a.getLastName() == null ? "" : a.getLastName().trim();
+        String first = a.getFirstName() == null ? "" : a.getFirstName().trim();
+        if (last.isEmpty() && first.isEmpty()) return a.getLogin();
+        if (last.isEmpty()) return first;
+        if (first.isEmpty()) return last;
+        return last + " " + first;
     }
 
     @Transactional

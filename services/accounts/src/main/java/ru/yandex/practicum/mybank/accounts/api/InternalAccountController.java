@@ -26,4 +26,9 @@ public class InternalAccountController {
     public AccountDto debit(@PathVariable String login, @Valid @RequestBody AmountRequest body) {
         return service.debit(login, body.amount());
     }
+
+    @PostMapping("/transfers")
+    public AccountDto transfer(@Valid @RequestBody TransferOperationRequest body) {
+        return service.transfer(body.fromLogin(), body.toLogin(), body.amount());
+    }
 }
