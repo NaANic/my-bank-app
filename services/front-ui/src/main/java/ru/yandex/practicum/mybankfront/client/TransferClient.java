@@ -7,48 +7,31 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClient;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
-import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
-import java.util.List;
-import ru.yandex.practicum.mybankfront.controller.dto.AccountDto;
+import java.math.BigDecimal;
+import java.util.Map;
 
 @Component
-public class AccountsClient {
+public class TransferClient {
 
     private final RestClient restClient;
     private final OAuth2AuthorizedClientService authorizedClients;
 
-    public AccountsClient(RestClient.Builder builder,
+    public TransferClient(RestClient.Builder builder,
                           OAuth2AuthorizedClientService authorizedClients,
                           @Value("${bank.gateway-url}") String gatewayUrl) {
         this.restClient = builder.baseUrl(gatewayUrl).build();
         this.authorizedClients = authorizedClients;
     }
 
-    public Profile getMe() {
-        return restClient.get()
-                .uri("/accounts/me")
-                .headers(h -> h.setBearerAuth(accessToken()))
-                .retrieve()
-                .body(Profile.class);
-    }
-
-    public List<AccountDto> others() {
-        return restClient.get()
-                .uri("/accounts/others")
-                .headers(h -> h.setBearerAuth(accessToken()))
-                .retrieve()
-                .body(new ParameterizedTypeReference<List<AccountDto>>() {});
-    }
-
-    public Profile updateMe(ProfileUpdate update) {
-        return restClient.put()
-                .uri("/accounts/me")
+    public Profile transfer(String toLogin, BigDecimal amount) {
+        return restClient.post()
+                .uri("/transfer/execute")
                 .headers(h -> h.setBearerAuth(accessToken()))
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(update)
+                .body(Map.of("toLogin", toLogin, "amount", amount))
                 .retrieve()
                 .body(Profile.class);
     }

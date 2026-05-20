@@ -35,6 +35,12 @@ spring:
                 - Path=/cash/**
               filters:
                 - StripPrefix=1
+            - id: transfer
+              uri: lb://transfer
+              predicates:
+                - Path=/transfer/**
+              filters:
+                - StripPrefix=1
 
 server:
   port: 8080

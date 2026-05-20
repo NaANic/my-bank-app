@@ -11,6 +11,8 @@ import ru.yandex.practicum.mybankfront.client.AccountsClient;
 import ru.yandex.practicum.mybankfront.client.CashClient;
 import ru.yandex.practicum.mybankfront.client.Profile;
 import ru.yandex.practicum.mybankfront.client.ProfileUpdate;
+import ru.yandex.practicum.mybankfront.client.TransferClient;
+import ru.yandex.practicum.mybankfront.controller.dto.AccountDto;
 import ru.yandex.practicum.mybankfront.controller.dto.CashAction;
 
 import java.math.BigDecimal;
@@ -25,11 +27,13 @@ public class MainController {
 
     private final AccountsClient accounts;
     private final CashClient cash;
+    private final TransferClient transfer;
     private final ObjectMapper objectMapper;
 
-    public MainController(AccountsClient accounts, CashClient cash, ObjectMapper objectMapper) {
+    public MainController(AccountsClient accounts, CashClient cash, TransferClient transfer, ObjectMapper objectMapper) {
         this.accounts = accounts;
         this.cash = cash;
+        this.transfer = transfer;
         this.objectMapper = objectMapper;
     }
 
@@ -100,8 +104,18 @@ public class MainController {
     public String transfer(Model model,
                            @RequestParam("value") int value,
                            @RequestParam("login") String login) {
-        return render(model, accounts.getMe(),
-                List.of("Переводы появятся в следующей фазе"), null);
+        if (value <= 0) {
+            return render(model, accounts.getMe(), List.of("Сумма перевода должна быть положительной"), null);
+        }
+        if (login == null || login.isBlank()) {
+            return render(model, accounts.getMe(), List.of("Выберите получателя"), null);
+        }
+        try {
+            Profile updated = transfer.transfer(login, BigDecimal.valueOf(value));
+            return render(model, updated, null, "Переведено " + value + " руб. пользователю " + login);
+        } catch (RestClientResponseException e) {
+            return render(model, accounts.getMe(), List.of(formatBackendError(e)), null);
+        }
     }
 
     private String render(Model model, Profile me, List<String> errors, String info) {
@@ -109,7 +123,13 @@ public class MainController {
         model.addAttribute("name", fullName);
         model.addAttribute("birthdate", me.dob() == null ? "" : me.dob().toString());
         model.addAttribute("sum", me.balance() == null ? BigDecimal.ZERO : me.balance());
-        model.addAttribute("accounts", List.of());
+        List<AccountDto> peers;
+        try {
+            peers = accounts.others();
+        } catch (RestClientResponseException e) {
+            peers = List.of();
+        }
+        model.addAttribute("accounts", peers);
         model.addAttribute("errors", errors);
         model.addAttribute("info", info);
         return "main";
