@@ -29,6 +29,12 @@ spring:
                 - Path=/accounts/**
               filters:
                 - StripPrefix=1
+            - id: cash
+              uri: lb://cash
+              predicates:
+                - Path=/cash/**
+              filters:
+                - StripPrefix=1
 
 server:
   port: 8080
