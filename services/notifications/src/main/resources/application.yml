@@ -1,0 +1,52 @@
+spring:
+  application:
+    name: notifications
+  config:
+    import: "optional:consul:"
+  cloud:
+    consul:
+      host: ${CONSUL_HOST:localhost}
+      port: ${CONSUL_PORT:8500}
+      discovery:
+        instance-id: ${spring.application.name}-${random.value}
+        prefer-ip-address: true
+      config:
+        enabled: true
+        format: yaml
+        prefix: config
+        default-context: ${spring.application.name}
+        fail-fast: false
+
+  datasource:
+    url: jdbc:postgresql://${PG_HOST:localhost}:${PG_PORT:5432}/${PG_DB:bank}
+    username: ${PG_USER:bank}
+    password: ${PG_PASSWORD:bank}
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        default_schema: notifications
+        format_sql: false
+
+  flyway:
+    enabled: true
+    schemas: notifications
+    default-schema: notifications
+    create-schemas: true
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${OAUTH_ISSUER_URI:http://localhost:8090/realms/bank}
+
+server:
+  port: 8085
+
+logging:
+  level:
+    org.springframework.security: INFO
+    ru.yandex.practicum.mybank.notifications: INFO
