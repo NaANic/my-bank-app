@@ -30,7 +30,7 @@
                         Обо мне
                     </div>
                     <div class="card-body gap-3">
-                        <form method="post" action="/account">
+                        <form method="post" th:action="@{/account}">
                             <div class="form-group">
                                 <h6>
                                     <label for="name">Фамилия Имя</label>
@@ -64,7 +64,7 @@
                         Операции с наличными
                     </div>
                     <div class="card-body gap-3">
-                        <form method="post" action="/cash">
+                        <form method="post" th:action="@{/cash}">
                             <div class="form-group">
                                 <h6>
                                     <label for="cash_value">Сумма, руб.</label>
@@ -87,7 +87,7 @@
                         Переводы
                     </div>
                     <div class="card-body gap-3">
-                        <form method="post" action="/transfer">
+                        <form method="post" th:action="@{/transfer}">
                             <div class="form-group">
                                 <h6>
                                     <label for="to_account">Кому</label>

@@ -1,0 +1,28 @@
+spring:
+  application:
+    name: front-ui
+
+  security:
+    oauth2:
+      client:
+        registration:
+          keycloak:
+            client-id: front-ui
+            client-secret: front-ui-secret
+            authorization-grant-type: authorization_code
+            scope: openid,profile,email
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+        provider:
+          keycloak:
+            issuer-uri: ${OAUTH_ISSUER_URI:http://localhost:8090/realms/bank}
+            user-name-attribute: preferred_username
+
+bank:
+  gateway-url: ${GATEWAY_URL:http://localhost:8080}
+
+server:
+  port: 8082
+
+logging:
+  level:
+    org.springframework.security: INFO
