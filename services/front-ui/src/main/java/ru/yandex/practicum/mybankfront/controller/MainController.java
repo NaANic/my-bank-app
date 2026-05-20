@@ -1,11 +1,14 @@
 package ru.yandex.practicum.mybankfront.controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.client.RestClientResponseException;
 import ru.yandex.practicum.mybankfront.client.AccountsClient;
+import ru.yandex.practicum.mybankfront.client.CashClient;
 import ru.yandex.practicum.mybankfront.client.Profile;
 import ru.yandex.practicum.mybankfront.client.ProfileUpdate;
 import ru.yandex.practicum.mybankfront.controller.dto.CashAction;
@@ -15,14 +18,19 @@ import java.time.LocalDate;
 import java.time.Period;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @Controller
 public class MainController {
 
     private final AccountsClient accounts;
+    private final CashClient cash;
+    private final ObjectMapper objectMapper;
 
-    public MainController(AccountsClient accounts) {
+    public MainController(AccountsClient accounts, CashClient cash, ObjectMapper objectMapper) {
         this.accounts = accounts;
+        this.cash = cash;
+        this.objectMapper = objectMapper;
     }
 
     @GetMapping("/")
@@ -53,8 +61,39 @@ public class MainController {
     public String editCash(Model model,
                            @RequestParam("value") int value,
                            @RequestParam("action") CashAction action) {
-        return render(model, accounts.getMe(),
-                List.of("Операции с наличными появятся в следующей фазе"), null);
+        if (value <= 0) {
+            return render(model, accounts.getMe(), List.of("Сумма должна быть положительной"), null);
+        }
+        BigDecimal amount = BigDecimal.valueOf(value);
+        try {
+            Profile updated = switch (action) {
+                case PUT -> cash.deposit(amount);
+                case GET -> cash.withdraw(amount);
+            };
+            String info = action == CashAction.PUT
+                    ? "Счёт пополнен на " + value + " руб."
+                    : "Снято " + value + " руб.";
+            return render(model, updated, null, info);
+        } catch (RestClientResponseException e) {
+            return render(model, accounts.getMe(), List.of(formatBackendError(e)), null);
+        }
+    }
+
+    private String formatBackendError(RestClientResponseException e) {
+        String body = e.getResponseBodyAsString();
+        try {
+            Map<?, ?> parsed = objectMapper.readValue(body, Map.class);
+            Object code = parsed.get("error");
+            if ("insufficient_funds".equals(code)) {
+                return "Недостаточно средств на счёте";
+            }
+            Object message = parsed.get("message");
+            if (message != null) {
+                return message.toString();
+            }
+        } catch (Exception ignored) {
+        }
+        return "Ошибка: " + e.getStatusCode();
     }
 
     @PostMapping("/transfer")
