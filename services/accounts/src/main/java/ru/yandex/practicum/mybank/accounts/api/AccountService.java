@@ -5,6 +5,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.yandex.practicum.mybank.accounts.domain.Account;
 import ru.yandex.practicum.mybank.accounts.domain.AccountRepository;
+import ru.yandex.practicum.mybank.accounts.outbox.OutboxEntry;
+import ru.yandex.practicum.mybank.accounts.outbox.OutboxRepository;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -14,9 +16,11 @@ import java.util.NoSuchElementException;
 public class AccountService {
 
     private final AccountRepository repository;
+    private final OutboxRepository outbox;
 
-    public AccountService(AccountRepository repository) {
+    public AccountService(AccountRepository repository, OutboxRepository outbox) {
         this.repository = repository;
+        this.outbox = outbox;
     }
 
     @Transactional
@@ -52,7 +56,10 @@ public class AccountService {
         requirePositive(amount);
         Account account = requireExisting(login);
         account.setBalance(account.getBalance().add(amount));
-        return toDto(repository.save(account));
+        AccountDto dto = toDto(repository.save(account));
+        outbox.save(new OutboxEntry(login, "deposit",
+                "Счёт пополнен на " + amount + " ₽, новый баланс: " + dto.balance()));
+        return dto;
     }
 
     public List<AccountSummary> listOthers(String login) {
@@ -76,7 +83,12 @@ public class AccountService {
         from.setBalance(from.getBalance().subtract(amount));
         to.setBalance(to.getBalance().add(amount));
         repository.save(to);
-        return toDto(repository.save(from));
+        AccountDto dto = toDto(repository.save(from));
+        outbox.save(new OutboxEntry(fromLogin, "transfer_out",
+                "Перевод " + amount + " ₽ пользователю " + toLogin + ", новый баланс: " + dto.balance()));
+        outbox.save(new OutboxEntry(toLogin, "transfer_in",
+                "Получен перевод " + amount + " ₽ от " + fromLogin + ", новый баланс: " + to.getBalance()));
+        return dto;
     }
 
     private static String fullName(Account a) {
@@ -96,7 +108,10 @@ public class AccountService {
             throw new InsufficientFundsException(login, amount, account.getBalance());
         }
         account.setBalance(account.getBalance().subtract(amount));
-        return toDto(repository.save(account));
+        AccountDto dto = toDto(repository.save(account));
+        outbox.save(new OutboxEntry(login, "withdraw",
+                "Снято " + amount + " ₽, новый баланс: " + dto.balance()));
+        return dto;
     }
 
     private Account requireExisting(String login) {

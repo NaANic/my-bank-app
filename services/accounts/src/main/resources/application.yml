@@ -39,9 +39,25 @@ spring:
 
   security:
     oauth2:
+      client:
+        registration:
+          notifications-service:
+            client-id: accounts
+            client-secret: accounts-service-secret
+            authorization-grant-type: client_credentials
+            scope: bank:service
+            provider: keycloak
+        provider:
+          keycloak:
+            issuer-uri: ${OAUTH_ISSUER_URI:http://localhost:8090/realms/bank}
       resourceserver:
         jwt:
           issuer-uri: ${OAUTH_ISSUER_URI:http://localhost:8090/realms/bank}
+
+bank:
+  notifications-base-url: ${NOTIFICATIONS_BASE_URL:http://notifications}
+  outbox:
+    poll-interval-ms: 5000
 
 server:
   port: 8081
