@@ -1,5 +1,6 @@
 package ru.yandex.practicum.mybankfront.client;
 
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.Authentication;
@@ -27,6 +28,7 @@ public class AccountsClient {
         this.authorizedClients = authorizedClients;
     }
 
+    @CircuitBreaker(name = "accounts")
     public Profile getMe() {
         return restClient.get()
                 .uri("/accounts/me")
@@ -35,6 +37,7 @@ public class AccountsClient {
                 .body(Profile.class);
     }
 
+    @CircuitBreaker(name = "accounts")
     public List<AccountDto> others() {
         return restClient.get()
                 .uri("/accounts/others")
@@ -43,6 +46,7 @@ public class AccountsClient {
                 .body(new ParameterizedTypeReference<List<AccountDto>>() {});
     }
 
+    @CircuitBreaker(name = "accounts")
     public Profile updateMe(ProfileUpdate update) {
         return restClient.put()
                 .uri("/accounts/me")

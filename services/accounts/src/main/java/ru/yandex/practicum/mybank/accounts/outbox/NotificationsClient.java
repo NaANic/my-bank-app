@@ -1,5 +1,6 @@
 package ru.yandex.practicum.mybank.accounts.outbox;
 
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.client.OAuth2AuthorizeRequest;
@@ -25,6 +26,7 @@ public class NotificationsClient {
         this.authorizedClientManager = authorizedClientManager;
     }
 
+    @CircuitBreaker(name = "notifications")
     public void send(String login, String kind, String message) {
         String token = serviceToken();
         restClient.post()

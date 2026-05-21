@@ -1,5 +1,6 @@
 package ru.yandex.practicum.mybank.cash.client;
 
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.client.OAuth2AuthorizeRequest;
@@ -28,10 +29,12 @@ public class AccountsClient {
         this.authorizedClientManager = authorizedClientManager;
     }
 
+    @CircuitBreaker(name = "accounts")
     public AccountSnapshot credit(String login, BigDecimal amount) {
         return call("credit", login, amount);
     }
 
+    @CircuitBreaker(name = "accounts")
     public AccountSnapshot debit(String login, BigDecimal amount) {
         return call("debit", login, amount);
     }

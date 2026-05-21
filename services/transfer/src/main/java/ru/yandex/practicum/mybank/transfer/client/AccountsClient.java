@@ -1,5 +1,6 @@
 package ru.yandex.practicum.mybank.transfer.client;
 
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.client.OAuth2AuthorizeRequest;
@@ -28,6 +29,7 @@ public class AccountsClient {
         this.authorizedClientManager = authorizedClientManager;
     }
 
+    @CircuitBreaker(name = "accounts")
     public AccountSnapshot transfer(String fromLogin, String toLogin, BigDecimal amount) {
         String token = serviceToken();
         try {

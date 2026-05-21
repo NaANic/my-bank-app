@@ -1,5 +1,6 @@
 package ru.yandex.practicum.mybankfront.client;
 
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.Authentication;
@@ -26,6 +27,7 @@ public class TransferClient {
         this.authorizedClients = authorizedClients;
     }
 
+    @CircuitBreaker(name = "transfer")
     public Profile transfer(String toLogin, BigDecimal amount) {
         return restClient.post()
                 .uri("/transfer/execute")

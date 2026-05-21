@@ -62,6 +62,18 @@ bank:
 server:
   port: 8081
 
+resilience4j:
+  circuitbreaker:
+    instances:
+      notifications:
+        sliding-window-type: count_based
+        sliding-window-size: 8
+        minimum-number-of-calls: 4
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 2
+
 logging:
   level:
     org.springframework.security: INFO
+    io.github.resilience4j: INFO

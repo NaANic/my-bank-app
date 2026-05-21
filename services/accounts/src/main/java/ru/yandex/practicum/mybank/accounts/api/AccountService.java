@@ -9,6 +9,8 @@ import ru.yandex.practicum.mybank.accounts.outbox.OutboxEntry;
 import ru.yandex.practicum.mybank.accounts.outbox.OutboxRepository;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.Period;
 import java.util.List;
 import java.util.NoSuchElementException;
 
@@ -41,6 +43,9 @@ public class AccountService {
 
     @Transactional
     public AccountDto updateMe(String login, UpdateProfileRequest req) {
+        if (req.dob() == null || Period.between(req.dob(), LocalDate.now()).getYears() < 18) {
+            throw new IllegalArgumentException("Возраст должен быть не меньше 18 лет");
+        }
         Account account = repository.findById(login).orElseGet(() -> new Account(login));
         account.setFirstName(req.firstName());
         account.setLastName(req.lastName());

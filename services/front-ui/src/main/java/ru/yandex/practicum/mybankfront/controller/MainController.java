@@ -1,6 +1,7 @@
 package ru.yandex.practicum.mybankfront.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -44,7 +45,7 @@ public class MainController {
 
     @GetMapping("/account")
     public String getAccount(Model model) {
-        return render(model, accounts.getMe(), null, null);
+        return safeRender(model, null, null);
     }
 
     @PostMapping("/account")
@@ -53,11 +54,18 @@ public class MainController {
                               @RequestParam("birthdate") LocalDate birthdate) {
         List<String> errors = validateProfile(name, birthdate);
         if (!errors.isEmpty()) {
-            return render(model, accounts.getMe(), errors, null);
+            return safeRender(model, errors, null);
         }
         String[] parts = name.trim().split("\\s+", 2);
         ProfileUpdate update = new ProfileUpdate(parts[1], parts[0], birthdate);
-        Profile saved = accounts.updateMe(update);
+        Profile saved;
+        try {
+            saved = accounts.updateMe(update);
+        } catch (RestClientResponseException e) {
+            return safeRender(model, List.of(formatBackendError(e)), null);
+        } catch (CallNotPermittedException e) {
+            return safeRender(model, List.of("Сервис временно недоступен"), null);
+        }
         return render(model, saved, null, "Данные сохранены");
     }
 
@@ -66,7 +74,7 @@ public class MainController {
                            @RequestParam("value") int value,
                            @RequestParam("action") CashAction action) {
         if (value <= 0) {
-            return render(model, accounts.getMe(), List.of("Сумма должна быть положительной"), null);
+            return safeRender(model, List.of("Сумма должна быть положительной"), null);
         }
         BigDecimal amount = BigDecimal.valueOf(value);
         try {
@@ -79,7 +87,9 @@ public class MainController {
                     : "Снято " + value + " руб.";
             return render(model, updated, null, info);
         } catch (RestClientResponseException e) {
-            return render(model, accounts.getMe(), List.of(formatBackendError(e)), null);
+            return safeRender(model, List.of(formatBackendError(e)), null);
+        } catch (CallNotPermittedException e) {
+            return safeRender(model, List.of("Сервис временно недоступен"), null);
         }
     }
 
@@ -108,14 +118,28 @@ public class MainController {
             return render(model, accounts.getMe(), List.of("Сумма перевода должна быть положительной"), null);
         }
         if (login == null || login.isBlank()) {
-            return render(model, accounts.getMe(), List.of("Выберите получателя"), null);
+            return safeRender(model, List.of("Выберите получателя"), null);
         }
         try {
             Profile updated = transfer.transfer(login, BigDecimal.valueOf(value));
             return render(model, updated, null, "Переведено " + value + " руб. пользователю " + login);
         } catch (RestClientResponseException e) {
-            return render(model, accounts.getMe(), List.of(formatBackendError(e)), null);
+            return safeRender(model, List.of(formatBackendError(e)), null);
+        } catch (CallNotPermittedException e) {
+            return safeRender(model, List.of("Сервис временно недоступен"), null);
         }
+    }
+
+    private String safeRender(Model model, List<String> existingErrors, String info) {
+        Profile me;
+        List<String> errors = existingErrors == null ? new ArrayList<>() : new ArrayList<>(existingErrors);
+        try {
+            me = accounts.getMe();
+        } catch (RestClientResponseException | CallNotPermittedException e) {
+            errors.add("Сервис аккаунтов временно недоступен");
+            me = new Profile("", "", "", null, BigDecimal.ZERO);
+        }
+        return render(model, me, errors.isEmpty() ? null : errors, info);
     }
 
     private String render(Model model, Profile me, List<String> errors, String info) {
@@ -126,7 +150,7 @@ public class MainController {
         List<AccountDto> peers;
         try {
             peers = accounts.others();
-        } catch (RestClientResponseException e) {
+        } catch (RestClientResponseException | CallNotPermittedException e) {
             peers = List.of();
         }
         model.addAttribute("accounts", peers);
