@@ -54,5 +54,106 @@ services:
       retries: 30
       start_period: 30s
 
+  accounts:
+    build:
+      context: .
+      dockerfile: services/accounts/Dockerfile
+    container_name: bank-accounts
+    environment:
+      CONSUL_HOST: consul
+      PG_HOST: postgres
+      OAUTH_ISSUER_URI: http://localhost:8090/realms/bank
+      OAUTH_JWK_SET_URI: http://keycloak:8090/realms/bank/protocol/openid-connect/certs
+      OAUTH_TOKEN_URI: http://keycloak:8090/realms/bank/protocol/openid-connect/token
+    depends_on:
+      consul: { condition: service_healthy }
+      postgres: { condition: service_healthy }
+      keycloak: { condition: service_healthy }
+    ports:
+      - "8081:8081"
+
+  cash:
+    build:
+      context: .
+      dockerfile: services/cash/Dockerfile
+    container_name: bank-cash
+    environment:
+      CONSUL_HOST: consul
+      OAUTH_ISSUER_URI: http://localhost:8090/realms/bank
+      OAUTH_JWK_SET_URI: http://keycloak:8090/realms/bank/protocol/openid-connect/certs
+      OAUTH_TOKEN_URI: http://keycloak:8090/realms/bank/protocol/openid-connect/token
+    depends_on:
+      consul: { condition: service_healthy }
+      keycloak: { condition: service_healthy }
+      accounts: { condition: service_started }
+    ports:
+      - "8083:8083"
+
+  transfer:
+    build:
+      context: .
+      dockerfile: services/transfer/Dockerfile
+    container_name: bank-transfer
+    environment:
+      CONSUL_HOST: consul
+      OAUTH_ISSUER_URI: http://localhost:8090/realms/bank
+      OAUTH_JWK_SET_URI: http://keycloak:8090/realms/bank/protocol/openid-connect/certs
+      OAUTH_TOKEN_URI: http://keycloak:8090/realms/bank/protocol/openid-connect/token
+    depends_on:
+      consul: { condition: service_healthy }
+      keycloak: { condition: service_healthy }
+      accounts: { condition: service_started }
+    ports:
+      - "8084:8084"
+
+  notifications:
+    build:
+      context: .
+      dockerfile: services/notifications/Dockerfile
+    container_name: bank-notifications
+    environment:
+      CONSUL_HOST: consul
+      PG_HOST: postgres
+      OAUTH_ISSUER_URI: http://localhost:8090/realms/bank
+      OAUTH_JWK_SET_URI: http://keycloak:8090/realms/bank/protocol/openid-connect/certs
+    depends_on:
+      consul: { condition: service_healthy }
+      postgres: { condition: service_healthy }
+      keycloak: { condition: service_healthy }
+    ports:
+      - "8085:8085"
+
+  gateway:
+    build:
+      context: .
+      dockerfile: infra/gateway/Dockerfile
+    container_name: bank-gateway
+    environment:
+      CONSUL_HOST: consul
+    depends_on:
+      consul: { condition: service_healthy }
+      accounts: { condition: service_started }
+      cash: { condition: service_started }
+      transfer: { condition: service_started }
+    ports:
+      - "8080:8080"
+
+  front-ui:
+    build:
+      context: .
+      dockerfile: services/front-ui/Dockerfile
+    container_name: bank-front-ui
+    environment:
+      OAUTH_AUTHORIZATION_URI: http://localhost:8090/realms/bank/protocol/openid-connect/auth
+      OAUTH_TOKEN_URI: http://keycloak:8090/realms/bank/protocol/openid-connect/token
+      OAUTH_JWK_SET_URI: http://keycloak:8090/realms/bank/protocol/openid-connect/certs
+      OAUTH_USERINFO_URI: http://keycloak:8090/realms/bank/protocol/openid-connect/userinfo
+      GATEWAY_URL: http://gateway:8080
+    depends_on:
+      keycloak: { condition: service_healthy }
+      gateway: { condition: service_started }
+    ports:
+      - "8082:8082"
+
 volumes:
   bank-postgres-data:
