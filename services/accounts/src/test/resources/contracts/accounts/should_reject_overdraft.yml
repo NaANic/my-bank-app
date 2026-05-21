@@ -1,0 +1,16 @@
+description: |
+  Debit with amount exceeding balance returns 400 insufficient_funds.
+request:
+  method: POST
+  url: /internal/accounts/alice/debit
+  headers:
+    Content-Type: application/json
+  body:
+    amount: 99999.00
+response:
+  status: 400
+  headers:
+    Content-Type: application/json
+  body:
+    error: insufficient_funds
+    message: "Insufficient funds for 'alice': requested 99999.0, available 1000.00"
