@@ -1,0 +1,39 @@
+spring:
+  cloud:
+    consul:
+      enabled: false
+      config:
+        enabled: false
+      discovery:
+        enabled: false
+  config:
+    import: []
+
+  security:
+    oauth2:
+      client:
+        registration:
+          accounts-service:
+            client-id: transfer
+            client-secret: test
+            authorization-grant-type: client_credentials
+            scope: bank:service
+            provider: keycloak
+        provider:
+          keycloak:
+            token-uri: http://localhost:0/dummy
+            authorization-uri: http://localhost:0/dummy/auth
+            jwk-set-uri: http://localhost:0/dummy/jwks
+
+bank:
+  accounts-base-url: http://localhost:0
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      accounts:
+        minimum-number-of-calls: 1000
+
+logging:
+  level:
+    org.springframework.cloud.consul: ERROR
