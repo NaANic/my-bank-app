@@ -27,6 +27,12 @@ spring:
             authorization-grant-type: client_credentials
             scope: bank:service
             provider: keycloak
+          notifications-service:
+            client-id: transfer
+            client-secret: transfer-service-secret
+            authorization-grant-type: client_credentials
+            scope: bank:service
+            provider: keycloak
         provider:
           keycloak:
             token-uri: ${OAUTH_TOKEN_URI:http://localhost:8090/realms/bank/protocol/openid-connect/token}
@@ -41,6 +47,7 @@ server:
 
 bank:
   accounts-base-url: ${ACCOUNTS_BASE_URL:http://accounts}
+  notifications-base-url: ${NOTIFICATIONS_BASE_URL:http://notifications}
 
 resilience4j:
   circuitbreaker:
@@ -54,6 +61,13 @@ resilience4j:
         permitted-number-of-calls-in-half-open-state: 2
         ignore-exceptions:
           - ru.yandex.practicum.mybank.transfer.client.AccountsServiceException
+      notifications:
+        sliding-window-type: count_based
+        sliding-window-size: 8
+        minimum-number-of-calls: 4
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 2
 
 logging:
   level:
