@@ -29,10 +29,12 @@ spring:
             provider: keycloak
         provider:
           keycloak:
-            issuer-uri: ${OAUTH_ISSUER_URI:http://localhost:8090/realms/bank}
+            token-uri: ${OAUTH_TOKEN_URI:http://localhost:8090/realms/bank/protocol/openid-connect/token}
+            jwk-set-uri: ${OAUTH_JWK_SET_URI:http://localhost:8090/realms/bank/protocol/openid-connect/certs}
       resourceserver:
         jwt:
           issuer-uri: ${OAUTH_ISSUER_URI:http://localhost:8090/realms/bank}
+          jwk-set-uri: ${OAUTH_JWK_SET_URI:http://localhost:8090/realms/bank/protocol/openid-connect/certs}
 
 server:
   port: 8083

@@ -42,6 +42,7 @@ spring:
       resourceserver:
         jwt:
           issuer-uri: ${OAUTH_ISSUER_URI:http://localhost:8090/realms/bank}
+          jwk-set-uri: ${OAUTH_JWK_SET_URI:http://localhost:8090/realms/bank/protocol/openid-connect/certs}
 
 server:
   port: 8085

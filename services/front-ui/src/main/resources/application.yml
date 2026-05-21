@@ -14,7 +14,10 @@ spring:
             redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
         provider:
           keycloak:
-            issuer-uri: ${OAUTH_ISSUER_URI:http://localhost:8090/realms/bank}
+            authorization-uri: ${OAUTH_AUTHORIZATION_URI:http://localhost:8090/realms/bank/protocol/openid-connect/auth}
+            token-uri: ${OAUTH_TOKEN_URI:http://localhost:8090/realms/bank/protocol/openid-connect/token}
+            jwk-set-uri: ${OAUTH_JWK_SET_URI:http://localhost:8090/realms/bank/protocol/openid-connect/certs}
+            user-info-uri: ${OAUTH_USERINFO_URI:http://localhost:8090/realms/bank/protocol/openid-connect/userinfo}
             user-name-attribute: preferred_username
 
 bank:
