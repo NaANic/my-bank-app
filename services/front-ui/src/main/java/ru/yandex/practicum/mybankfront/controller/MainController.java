@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.client.RestClientResponseException;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import ru.yandex.practicum.mybankfront.client.AccountsClient;
 import ru.yandex.practicum.mybankfront.client.CashClient;
 import ru.yandex.practicum.mybankfront.client.Profile;
@@ -45,52 +46,121 @@ public class MainController {
 
     @GetMapping("/account")
     public String getAccount(Model model) {
-        return safeRender(model, null, null);
+        Profile me = loadProfile(model);
+        renderModel(model, me, currentErrors(model), currentInfo(model));
+        return "main";
     }
 
     @PostMapping("/account")
-    public String editAccount(Model model,
-                              @RequestParam("name") String name,
-                              @RequestParam("birthdate") LocalDate birthdate) {
+    public String editAccount(@RequestParam("name") String name,
+                              @RequestParam("birthdate") LocalDate birthdate,
+                              RedirectAttributes redirect) {
         List<String> errors = validateProfile(name, birthdate);
         if (!errors.isEmpty()) {
-            return safeRender(model, errors, null);
+            redirect.addFlashAttribute("errors", errors);
+            return "redirect:/account";
         }
         String[] parts = name.trim().split("\\s+", 2);
         ProfileUpdate update = new ProfileUpdate(parts[1], parts[0], birthdate);
-        Profile saved;
         try {
-            saved = accounts.updateMe(update);
+            accounts.updateMe(update);
+            redirect.addFlashAttribute("info", "Данные сохранены");
         } catch (RestClientResponseException e) {
-            return safeRender(model, List.of(formatBackendError(e)), null);
+            redirect.addFlashAttribute("errors", List.of(formatBackendError(e)));
         } catch (CallNotPermittedException e) {
-            return safeRender(model, List.of("Сервис временно недоступен"), null);
+            redirect.addFlashAttribute("errors", List.of("Сервис временно недоступен"));
         }
-        return render(model, saved, null, "Данные сохранены");
+        return "redirect:/account";
     }
 
     @PostMapping("/cash")
-    public String editCash(Model model,
-                           @RequestParam("value") int value,
-                           @RequestParam("action") CashAction action) {
+    public String editCash(@RequestParam("value") int value,
+                           @RequestParam("action") CashAction action,
+                           RedirectAttributes redirect) {
         if (value <= 0) {
-            return safeRender(model, List.of("Сумма должна быть положительной"), null);
+            redirect.addFlashAttribute("errors", List.of("Сумма должна быть положительной"));
+            return "redirect:/account";
         }
         BigDecimal amount = BigDecimal.valueOf(value);
         try {
-            Profile updated = switch (action) {
+            switch (action) {
                 case PUT -> cash.deposit(amount);
                 case GET -> cash.withdraw(amount);
-            };
-            String info = action == CashAction.PUT
+            }
+            redirect.addFlashAttribute("info", action == CashAction.PUT
                     ? "Счёт пополнен на " + value + " руб."
-                    : "Снято " + value + " руб.";
-            return render(model, updated, null, info);
+                    : "Снято " + value + " руб.");
         } catch (RestClientResponseException e) {
-            return safeRender(model, List.of(formatBackendError(e)), null);
+            redirect.addFlashAttribute("errors", List.of(formatBackendError(e)));
         } catch (CallNotPermittedException e) {
-            return safeRender(model, List.of("Сервис временно недоступен"), null);
+            redirect.addFlashAttribute("errors", List.of("Сервис временно недоступен"));
         }
+        return "redirect:/account";
+    }
+
+    @PostMapping("/transfer")
+    public String transfer(@RequestParam("value") int value,
+                           @RequestParam("login") String login,
+                           RedirectAttributes redirect) {
+        if (value <= 0) {
+            redirect.addFlashAttribute("errors", List.of("Сумма перевода должна быть положительной"));
+            return "redirect:/account";
+        }
+        if (login == null || login.isBlank()) {
+            redirect.addFlashAttribute("errors", List.of("Выберите получателя"));
+            return "redirect:/account";
+        }
+        try {
+            transfer.transfer(login, BigDecimal.valueOf(value));
+            redirect.addFlashAttribute("info", "Переведено " + value + " руб. пользователю " + login);
+        } catch (RestClientResponseException e) {
+            redirect.addFlashAttribute("errors", List.of(formatBackendError(e)));
+        } catch (CallNotPermittedException e) {
+            redirect.addFlashAttribute("errors", List.of("Сервис временно недоступен"));
+        }
+        return "redirect:/account";
+    }
+
+    private Profile loadProfile(Model model) {
+        try {
+            return accounts.getMe();
+        } catch (RestClientResponseException | CallNotPermittedException e) {
+            List<String> errors = currentErrors(model);
+            errors = errors == null ? new ArrayList<>() : new ArrayList<>(errors);
+            errors.add("Сервис аккаунтов временно недоступен");
+            model.addAttribute("errors", errors);
+            return new Profile("", "", "", null, BigDecimal.ZERO);
+        }
+    }
+
+    private void renderModel(Model model, Profile me, List<String> errors, String info) {
+        model.addAttribute("name", combineName(me));
+        model.addAttribute("birthdate", me.dob() == null ? "" : me.dob().toString());
+        model.addAttribute("sum", me.balance() == null ? BigDecimal.ZERO : me.balance());
+        List<AccountDto> peers;
+        try {
+            peers = accounts.others();
+        } catch (RestClientResponseException | CallNotPermittedException e) {
+            peers = List.of();
+        }
+        model.addAttribute("accounts", peers);
+        if (!model.containsAttribute("errors")) {
+            model.addAttribute("errors", errors);
+        }
+        if (!model.containsAttribute("info")) {
+            model.addAttribute("info", info);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<String> currentErrors(Model model) {
+        Object v = model.getAttribute("errors");
+        return v instanceof List<?> list ? (List<String>) list : null;
+    }
+
+    private static String currentInfo(Model model) {
+        Object v = model.getAttribute("info");
+        return v instanceof String s ? s : null;
     }
 
     private String formatBackendError(RestClientResponseException e) {
@@ -108,55 +178,6 @@ public class MainController {
         } catch (Exception ignored) {
         }
         return "Ошибка: " + e.getStatusCode();
-    }
-
-    @PostMapping("/transfer")
-    public String transfer(Model model,
-                           @RequestParam("value") int value,
-                           @RequestParam("login") String login) {
-        if (value <= 0) {
-            return render(model, accounts.getMe(), List.of("Сумма перевода должна быть положительной"), null);
-        }
-        if (login == null || login.isBlank()) {
-            return safeRender(model, List.of("Выберите получателя"), null);
-        }
-        try {
-            Profile updated = transfer.transfer(login, BigDecimal.valueOf(value));
-            return render(model, updated, null, "Переведено " + value + " руб. пользователю " + login);
-        } catch (RestClientResponseException e) {
-            return safeRender(model, List.of(formatBackendError(e)), null);
-        } catch (CallNotPermittedException e) {
-            return safeRender(model, List.of("Сервис временно недоступен"), null);
-        }
-    }
-
-    private String safeRender(Model model, List<String> existingErrors, String info) {
-        Profile me;
-        List<String> errors = existingErrors == null ? new ArrayList<>() : new ArrayList<>(existingErrors);
-        try {
-            me = accounts.getMe();
-        } catch (RestClientResponseException | CallNotPermittedException e) {
-            errors.add("Сервис аккаунтов временно недоступен");
-            me = new Profile("", "", "", null, BigDecimal.ZERO);
-        }
-        return render(model, me, errors.isEmpty() ? null : errors, info);
-    }
-
-    private String render(Model model, Profile me, List<String> errors, String info) {
-        String fullName = combineName(me);
-        model.addAttribute("name", fullName);
-        model.addAttribute("birthdate", me.dob() == null ? "" : me.dob().toString());
-        model.addAttribute("sum", me.balance() == null ? BigDecimal.ZERO : me.balance());
-        List<AccountDto> peers;
-        try {
-            peers = accounts.others();
-        } catch (RestClientResponseException | CallNotPermittedException e) {
-            peers = List.of();
-        }
-        model.addAttribute("accounts", peers);
-        model.addAttribute("errors", errors);
-        model.addAttribute("info", info);
-        return "main";
     }
 
     private static String combineName(Profile me) {

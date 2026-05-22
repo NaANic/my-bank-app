@@ -26,8 +26,9 @@ import static org.mockito.Mockito.when;
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
@@ -71,44 +72,37 @@ class MainControllerTest {
     }
 
     @Test
-    void editCash_depositCallsClientAndShowsSuccess() throws Exception {
+    void editCash_depositRedirectsToAccountAndCarriesInfoFlash() throws Exception {
         when(cashClient.deposit(any(BigDecimal.class)))
                 .thenReturn(new Profile("alice", "Alice", "Andreeva",
                         LocalDate.of(1990, 4, 12), new BigDecimal("1100.00")));
-        when(accountsClient.others()).thenReturn(List.of());
 
         mockMvc.perform(post("/cash").param("value", "100").param("action", "PUT"))
-                .andExpect(status().isOk())
-                .andExpect(model().attribute("info", "Счёт пополнен на 100 руб."))
-                .andExpect(model().attribute("sum", new BigDecimal("1100.00")));
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/account"))
+                .andExpect(flash().attribute("info", "Счёт пополнен на 100 руб."));
     }
 
     @Test
-    void editCash_surfacesInsufficientFundsInModel() throws Exception {
+    void editCash_insufficientFundsRedirectsWithErrorFlash() throws Exception {
         byte[] body = "{\"error\":\"insufficient_funds\",\"message\":\"x\"}".getBytes(StandardCharsets.UTF_8);
         when(cashClient.withdraw(any(BigDecimal.class)))
                 .thenThrow(HttpClientErrorException.create(BAD_REQUEST, "Bad", null, body, StandardCharsets.UTF_8));
-        when(accountsClient.getMe()).thenReturn(new Profile("alice", "Alice", "Andreeva",
-                LocalDate.of(1990, 4, 12), new BigDecimal("10.00")));
-        when(accountsClient.others()).thenReturn(List.of());
 
         mockMvc.perform(post("/cash").param("value", "9999").param("action", "GET"))
-                .andExpect(status().isOk())
-                .andExpect(model().attribute("errors", List.of("Недостаточно средств на счёте")))
-                .andExpect(content().contentTypeCompatibleWith("text/html"));
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/account"))
+                .andExpect(flash().attribute("errors", List.of("Недостаточно средств на счёте")));
     }
 
     @Test
-    void editAccount_rejectsUnderageOnClientSide() throws Exception {
-        when(accountsClient.getMe()).thenReturn(new Profile("alice", "Alice", "A",
-                LocalDate.of(1990, 1, 1), new BigDecimal("100")));
-        when(accountsClient.others()).thenReturn(List.of());
-
+    void editAccount_rejectsUnderageWithFlashError() throws Exception {
         mockMvc.perform(post("/account")
                         .param("name", "Под Росток")
                         .param("birthdate", LocalDate.now().minusYears(10).toString()))
-                .andExpect(status().isOk())
-                .andExpect(model().attribute("errors",
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/account"))
+                .andExpect(flash().attribute("errors",
                         org.hamcrest.Matchers.hasItem("Возраст должен быть не меньше 18 лет")));
     }
 }
