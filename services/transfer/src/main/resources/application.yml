@@ -1,0 +1,75 @@
+spring:
+  application:
+    name: transfer
+  config:
+    import: "optional:consul:"
+  cloud:
+    consul:
+      host: ${CONSUL_HOST:localhost}
+      port: ${CONSUL_PORT:8500}
+      discovery:
+        instance-id: ${spring.application.name}-${random.value}
+        prefer-ip-address: true
+      config:
+        enabled: true
+        format: yaml
+        prefix: config
+        default-context: ${spring.application.name}
+        fail-fast: false
+
+  security:
+    oauth2:
+      client:
+        registration:
+          accounts-service:
+            client-id: transfer
+            client-secret: transfer-service-secret
+            authorization-grant-type: client_credentials
+            scope: bank:service
+            provider: keycloak
+          notifications-service:
+            client-id: transfer
+            client-secret: transfer-service-secret
+            authorization-grant-type: client_credentials
+            scope: bank:service
+            provider: keycloak
+        provider:
+          keycloak:
+            token-uri: ${OAUTH_TOKEN_URI:http://localhost:8090/realms/bank/protocol/openid-connect/token}
+            jwk-set-uri: ${OAUTH_JWK_SET_URI:http://localhost:8090/realms/bank/protocol/openid-connect/certs}
+      resourceserver:
+        jwt:
+          issuer-uri: ${OAUTH_ISSUER_URI:http://localhost:8090/realms/bank}
+          jwk-set-uri: ${OAUTH_JWK_SET_URI:http://localhost:8090/realms/bank/protocol/openid-connect/certs}
+
+server:
+  port: 8084
+
+bank:
+  accounts-base-url: ${ACCOUNTS_BASE_URL:http://accounts}
+  notifications-base-url: ${NOTIFICATIONS_BASE_URL:http://notifications}
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      accounts:
+        sliding-window-type: count_based
+        sliding-window-size: 8
+        minimum-number-of-calls: 4
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 15s
+        permitted-number-of-calls-in-half-open-state: 2
+        ignore-exceptions:
+          - ru.yandex.practicum.mybank.transfer.client.AccountsServiceException
+      notifications:
+        sliding-window-type: count_based
+        sliding-window-size: 8
+        minimum-number-of-calls: 4
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 2
+
+logging:
+  level:
+    org.springframework.security: INFO
+    io.github.resilience4j: INFO

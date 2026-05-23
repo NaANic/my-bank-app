@@ -1,0 +1,52 @@
+spring:
+  application:
+    name: front-ui
+
+  security:
+    oauth2:
+      client:
+        registration:
+          keycloak:
+            client-id: front-ui
+            client-secret: front-ui-secret
+            authorization-grant-type: authorization_code
+            scope: openid,profile,email
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+        provider:
+          keycloak:
+            authorization-uri: ${OAUTH_AUTHORIZATION_URI:http://localhost:8090/realms/bank/protocol/openid-connect/auth}
+            token-uri: ${OAUTH_TOKEN_URI:http://localhost:8090/realms/bank/protocol/openid-connect/token}
+            jwk-set-uri: ${OAUTH_JWK_SET_URI:http://localhost:8090/realms/bank/protocol/openid-connect/certs}
+            user-info-uri: ${OAUTH_USERINFO_URI:http://localhost:8090/realms/bank/protocol/openid-connect/userinfo}
+            user-name-attribute: preferred_username
+
+bank:
+  gateway-url: ${GATEWAY_URL:http://localhost:8080}
+
+server:
+  port: 8082
+
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        sliding-window-type: count_based
+        sliding-window-size: 8
+        minimum-number-of-calls: 4
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 15s
+        permitted-number-of-calls-in-half-open-state: 2
+        ignore-exceptions:
+          - org.springframework.web.client.RestClientResponseException
+    instances:
+      accounts:
+        base-config: default
+      cash:
+        base-config: default
+      transfer:
+        base-config: default
+
+logging:
+  level:
+    org.springframework.security: INFO
+    io.github.resilience4j: INFO
