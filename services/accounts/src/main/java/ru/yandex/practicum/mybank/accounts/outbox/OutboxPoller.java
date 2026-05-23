@@ -33,8 +33,8 @@ public class OutboxPoller {
                 notifications.send(entry.getLogin(), entry.getKind(), entry.getMessage());
                 markSent(entry.getId());
             } catch (Exception e) {
-                bumpAttempts(entry.getId());
-                log.warn("outbox#{} failed (attempts={}): {}", entry.getId(), entry.getAttempts() + 1, e.toString());
+                int attempts = bumpAttempts(entry.getId());
+                log.warn("outbox#{} failed (attempts={}): {}", entry.getId(), attempts, e.toString());
             }
         }
     }
@@ -48,10 +48,10 @@ public class OutboxPoller {
     }
 
     @Transactional
-    public void bumpAttempts(Long id) {
-        repository.findById(id).ifPresent(e -> {
+    public int bumpAttempts(Long id) {
+        return repository.findById(id).map(e -> {
             e.incrementAttempts();
-            repository.save(e);
-        });
+            return repository.save(e).getAttempts();
+        }).orElse(0);
     }
 }
