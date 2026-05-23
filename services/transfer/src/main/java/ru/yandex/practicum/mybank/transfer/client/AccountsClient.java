@@ -3,8 +3,6 @@ package ru.yandex.practicum.mybank.transfer.client;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
-import org.springframework.security.oauth2.client.OAuth2AuthorizeRequest;
-import org.springframework.security.oauth2.client.OAuth2AuthorizedClient;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientManager;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -15,23 +13,22 @@ import java.math.BigDecimal;
 import java.util.Map;
 
 @Component
-public class AccountsClient {
+public class AccountsClient extends AbstractServiceClient {
 
     static final String REGISTRATION_ID = "accounts-service";
 
     private final RestClient restClient;
-    private final OAuth2AuthorizedClientManager authorizedClientManager;
 
     public AccountsClient(RestClient.Builder loadBalancedRestClientBuilder,
                           OAuth2AuthorizedClientManager authorizedClientManager,
                           @Value("${bank.accounts-base-url}") String baseUrl) {
+        super(authorizedClientManager);
         this.restClient = loadBalancedRestClientBuilder.baseUrl(baseUrl).build();
-        this.authorizedClientManager = authorizedClientManager;
     }
 
     @CircuitBreaker(name = "accounts")
     public AccountSnapshot transfer(String fromLogin, String toLogin, BigDecimal amount) {
-        String token = serviceToken();
+        String token = serviceToken(REGISTRATION_ID);
         try {
             return restClient.post()
                     .uri("/internal/accounts/transfers")
@@ -43,17 +40,5 @@ public class AccountsClient {
         } catch (RestClientResponseException e) {
             throw new AccountsServiceException(e.getStatusCode(), e.getResponseBodyAsString());
         }
-    }
-
-    private String serviceToken() {
-        OAuth2AuthorizeRequest request = OAuth2AuthorizeRequest
-                .withClientRegistrationId(REGISTRATION_ID)
-                .principal(REGISTRATION_ID)
-                .build();
-        OAuth2AuthorizedClient client = authorizedClientManager.authorize(request);
-        if (client == null) {
-            throw new IllegalStateException("Could not obtain service token for registration '" + REGISTRATION_ID + "'");
-        }
-        return client.getAccessToken().getTokenValue();
     }
 }
