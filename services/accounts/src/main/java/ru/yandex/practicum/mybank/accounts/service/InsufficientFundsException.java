@@ -1,4 +1,4 @@
-package ru.yandex.practicum.mybank.accounts.api;
+package ru.yandex.practicum.mybank.accounts.service;
 
 import java.math.BigDecimal;
 

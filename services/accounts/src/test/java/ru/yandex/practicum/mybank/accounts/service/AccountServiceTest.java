@@ -1,4 +1,4 @@
-package ru.yandex.practicum.mybank.accounts.api;
+package ru.yandex.practicum.mybank.accounts.service;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -7,6 +7,9 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.oauth2.jwt.Jwt;
+import ru.yandex.practicum.mybank.accounts.api.AccountDto;
+import ru.yandex.practicum.mybank.accounts.api.AccountSummary;
+import ru.yandex.practicum.mybank.accounts.api.UpdateProfileRequest;
 import ru.yandex.practicum.mybank.accounts.domain.Account;
 import ru.yandex.practicum.mybank.accounts.domain.AccountRepository;
 import ru.yandex.practicum.mybank.accounts.outbox.OutboxEntry;
