@@ -49,13 +49,10 @@ public class AccountService {
         if (req.dob() == null || Period.between(req.dob(), LocalDate.now()).getYears() < 18) {
             throw new IllegalArgumentException("Возраст должен быть не меньше 18 лет");
         }
-        Account account = repository.findById(login).orElseGet(() -> new Account(login));
+        Account account = requireExisting(login);
         account.setFirstName(req.firstName());
         account.setLastName(req.lastName());
         account.setDob(req.dob());
-        if (account.getBalance() == null) {
-            account.setBalance(BigDecimal.ZERO);
-        }
         return toDto(repository.save(account));
     }
 

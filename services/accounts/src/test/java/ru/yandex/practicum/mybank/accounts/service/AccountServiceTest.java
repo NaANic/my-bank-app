@@ -98,6 +98,17 @@ class AccountServiceTest {
     }
 
     @Test
+    void updateMe_throwsWhenAccountMissing() {
+        when(repository.findById("ghost")).thenReturn(Optional.empty());
+        UpdateProfileRequest req = new UpdateProfileRequest("Some", "One", LocalDate.of(1990, 1, 1));
+
+        assertThatThrownBy(() -> service.updateMe("ghost", req))
+                .isInstanceOf(NoSuchElementException.class)
+                .hasMessageContaining("ghost");
+        verify(repository, never()).save(any());
+    }
+
+    @Test
     void credit_writesOutboxRow() {
         Account existing = account("alice", "Alice", "A", LocalDate.of(1990, 4, 12), new BigDecimal("100.00"));
         when(repository.findById("alice")).thenReturn(Optional.of(existing));
