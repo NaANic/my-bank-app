@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: keycloak
+  labels:
+    app.kubernetes.io/name: keycloak
+    app.kubernetes.io/component: auth-server
+    app.kubernetes.io/part-of: bank
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  # Keycloak runs outside the cluster (Scheme A). This ExternalName maps the
+  # in-cluster DNS name "keycloak" to the host, so pods reach it via
+  # http://keycloak:8090 just like in docker-compose.
+  type: ExternalName
+  externalName: {{ .Values.global.keycloak.externalName | quote }}
