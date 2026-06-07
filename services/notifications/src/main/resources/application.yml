@@ -1,21 +1,6 @@
 spring:
   application:
     name: notifications
-  config:
-    import: "optional:consul:"
-  cloud:
-    consul:
-      host: ${CONSUL_HOST:localhost}
-      port: ${CONSUL_PORT:8500}
-      discovery:
-        instance-id: ${spring.application.name}-${random.value}
-        prefer-ip-address: true
-      config:
-        enabled: true
-        format: yaml
-        prefix: config
-        default-context: ${spring.application.name}
-        fail-fast: false
 
   datasource:
     url: jdbc:postgresql://${PG_HOST:localhost}:${PG_PORT:5432}/${PG_DB:bank}
