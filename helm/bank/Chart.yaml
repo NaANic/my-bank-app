@@ -9,4 +9,8 @@ appVersion: "0.0.1"
 # Each is declared here with a `condition` so it can be toggled from the
 # umbrella values.yaml; this also lets you deploy everything at once via the
 # umbrella, or a single component directly via its subchart directory.
-dependencies: []
+dependencies:
+  - name: postgres
+    version: 0.1.0
+    repository: "file://charts/postgres"
+    condition: postgres.enabled
