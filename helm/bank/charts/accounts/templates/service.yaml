@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: accounts
+  labels:
+    {{- include "accounts.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "accounts.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.service.port }}
+      targetPort: http
