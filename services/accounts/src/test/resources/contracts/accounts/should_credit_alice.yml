@@ -1,0 +1,20 @@
+description: |
+  Service tokens with SCOPE_bank:service can credit an existing account.
+  Returns the updated AccountDto.
+request:
+  method: POST
+  url: /internal/accounts/alice/credit
+  headers:
+    Content-Type: application/json
+  body:
+    amount: 50.00
+response:
+  status: 200
+  headers:
+    Content-Type: application/json
+  body:
+    login: alice
+    firstName: Alice
+    lastName: Andreeva
+    dob: "1990-04-12"
+    balance: 1050.00

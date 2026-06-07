@@ -1,0 +1,81 @@
+spring:
+  application:
+    name: accounts
+  config:
+    import: "optional:consul:"
+  cloud:
+    consul:
+      host: ${CONSUL_HOST:localhost}
+      port: ${CONSUL_PORT:8500}
+      discovery:
+        instance-id: ${spring.application.name}-${random.value}
+        prefer-ip-address: true
+      config:
+        enabled: true
+        format: yaml
+        prefix: config
+        default-context: ${spring.application.name}
+        fail-fast: false
+
+  datasource:
+    url: jdbc:postgresql://${PG_HOST:localhost}:${PG_PORT:5432}/${PG_DB:bank}
+    username: ${PG_USER:bank}
+    password: ${PG_PASSWORD:bank}
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        default_schema: accounts
+        format_sql: false
+
+  flyway:
+    enabled: true
+    schemas: accounts
+    default-schema: accounts
+    create-schemas: true
+
+  security:
+    oauth2:
+      client:
+        registration:
+          notifications-service:
+            client-id: accounts
+            client-secret: accounts-service-secret
+            authorization-grant-type: client_credentials
+            scope: bank:service
+            provider: keycloak
+        provider:
+          keycloak:
+            token-uri: ${OAUTH_TOKEN_URI:http://localhost:8090/realms/bank/protocol/openid-connect/token}
+            jwk-set-uri: ${OAUTH_JWK_SET_URI:http://localhost:8090/realms/bank/protocol/openid-connect/certs}
+      resourceserver:
+        jwt:
+          issuer-uri: ${OAUTH_ISSUER_URI:http://localhost:8090/realms/bank}
+          jwk-set-uri: ${OAUTH_JWK_SET_URI:http://localhost:8090/realms/bank/protocol/openid-connect/certs}
+
+bank:
+  notifications-base-url: ${NOTIFICATIONS_BASE_URL:http://notifications}
+  outbox:
+    poll-interval-ms: 5000
+
+server:
+  port: 8081
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      notifications:
+        sliding-window-type: count_based
+        sliding-window-size: 8
+        minimum-number-of-calls: 4
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 2
+
+logging:
+  level:
+    org.springframework.security: INFO
+    io.github.resilience4j: INFO
