@@ -1,21 +1,6 @@
 spring:
   application:
     name: accounts
-  config:
-    import: "optional:consul:"
-  cloud:
-    consul:
-      host: ${CONSUL_HOST:localhost}
-      port: ${CONSUL_PORT:8500}
-      discovery:
-        instance-id: ${spring.application.name}-${random.value}
-        prefer-ip-address: true
-      config:
-        enabled: true
-        format: yaml
-        prefix: config
-        default-context: ${spring.application.name}
-        fail-fast: false
 
   datasource:
     url: jdbc:postgresql://${PG_HOST:localhost}:${PG_PORT:5432}/${PG_DB:bank}
@@ -42,8 +27,8 @@ spring:
       client:
         registration:
           notifications-service:
-            client-id: accounts
-            client-secret: accounts-service-secret
+            client-id: ${OAUTH_CLIENT_ID:accounts}
+            client-secret: ${OAUTH_CLIENT_SECRET:accounts-service-secret}
             authorization-grant-type: client_credentials
             scope: bank:service
             provider: keycloak
@@ -57,7 +42,7 @@ spring:
           jwk-set-uri: ${OAUTH_JWK_SET_URI:http://localhost:8090/realms/bank/protocol/openid-connect/certs}
 
 bank:
-  notifications-base-url: ${NOTIFICATIONS_BASE_URL:http://notifications}
+  notifications-base-url: ${NOTIFICATIONS_BASE_URL:http://localhost:8085}
   outbox:
     poll-interval-ms: 5000
 
