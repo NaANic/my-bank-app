@@ -18,3 +18,7 @@ dependencies:
     version: 0.1.0
     repository: "file://charts/accounts"
     condition: accounts.enabled
+  - name: notifications
+    version: 0.1.0
+    repository: "file://charts/notifications"
+    condition: notifications.enabled
