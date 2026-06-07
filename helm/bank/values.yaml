@@ -1,0 +1,67 @@
+# ---------------------------------------------------------------------------
+# Umbrella values for the "Bank" application.
+#
+# `global` is visible to every subchart as `.Values.global.*`.
+# Per-subchart sections (accounts:, cash:, ...) override that subchart's own
+# values.yaml and also carry the `enabled` flag used by Chart.yaml conditions.
+# ---------------------------------------------------------------------------
+
+global:
+  # Local images built on the host and loaded into the cluster.
+  # Leave registry empty; set pullPolicy so the cluster never tries to pull
+  # from a remote registry for these local-only tags.
+  image:
+    registry: ""
+    pullPolicy: IfNotPresent
+    tag: "0.0.1"
+
+  # PostgreSQL connection shared by accounts + notifications.
+  # The password lives in a Secret (see the postgres subchart), not here.
+  postgres:
+    host: postgres          # DNS name of the postgres Service
+    port: 5432
+    database: bank
+    username: bank
+
+  # Keycloak runs OUTSIDE the cluster (Scheme A).
+  # `externalName` is the host alias the cluster uses to reach it:
+  #   - Rancher Desktop / Docker Desktop:  host.docker.internal
+  #   - Minikube:                          host.minikube.internal
+  #   - Kind:                              the host gateway IP
+  # An ExternalName Service named "keycloak" (in the keycloak subchart/templates)
+  # maps the in-cluster name "keycloak" to this host alias, so pods can keep
+  # using http://keycloak:8090 exactly like in docker-compose.
+  keycloak:
+    externalName: host.docker.internal
+    httpPort: 8090
+    realm: bank
+    # `iss` claim baked into every token by Keycloak (KC_HOSTNAME=localhost).
+    # Used by resource servers for issuer validation.
+    issuerUri: "http://localhost:8090/realms/bank"
+    # Endpoints pods actually call (must be cluster-reachable -> via "keycloak" svc).
+    jwkSetUri: "http://keycloak:8090/realms/bank/protocol/openid-connect/certs"
+    tokenUri: "http://keycloak:8090/realms/bank/protocol/openid-connect/token"
+
+# --- subchart toggles + overrides ------------------------------------------
+
+postgres:
+  enabled: true
+
+accounts:
+  enabled: true
+
+notifications:
+  enabled: true
+
+cash:
+  enabled: true
+
+transfer:
+  enabled: true
+
+gateway:
+  enabled: true
+  # NodePort so the external Front-UI can reach the gateway from the host.
+  service:
+    type: NodePort
+    nodePort: 30080

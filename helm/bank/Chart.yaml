@@ -1,0 +1,12 @@
+apiVersion: v2
+name: bank
+description: Umbrella Helm chart for the "Bank" microservices application (Sprint 10)
+type: application
+version: 0.1.0
+appVersion: "0.0.1"
+
+# Subcharts live under charts/ and are added one per step.
+# Each is declared here with a `condition` so it can be toggled from the
+# umbrella values.yaml; this also lets you deploy everything at once via the
+# umbrella, or a single component directly via its subchart directory.
+dependencies: []
