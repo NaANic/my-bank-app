@@ -1,0 +1,6 @@
+apiVersion: v2
+name: gateway
+description: Spring Cloud Gateway (API Gateway) for the Bank application
+type: application
+version: 0.1.0
+appVersion: "0.0.1"
