@@ -22,3 +22,7 @@ dependencies:
     version: 0.1.0
     repository: "file://charts/notifications"
     condition: notifications.enabled
+  - name: cash
+    version: 0.1.0
+    repository: "file://charts/cash"
+    condition: cash.enabled

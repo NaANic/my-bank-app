@@ -1,0 +1,31 @@
+# Defaults used when this subchart is installed on its own.
+# When deployed via the umbrella, global.* is supplied by the umbrella values.yaml.
+global:
+  image:
+    registry: ""
+    pullPolicy: IfNotPresent
+    tag: "0.0.1"
+  keycloak:
+    issuerUri: "http://localhost:8090/realms/bank"
+    jwkSetUri: "http://keycloak:8090/realms/bank/protocol/openid-connect/certs"
+    tokenUri: "http://keycloak:8090/realms/bank/protocol/openid-connect/token"
+
+image:
+  repository: cash
+  tag: ""          # "" -> falls back to global.image.tag
+
+replicaCount: 1
+
+service:
+  port: 8083
+
+# OAuth2 client-credentials identity used for service-to-service calls.
+oauth:
+  clientId: cash
+  clientSecret: cash-service-secret
+
+# Base URLs of the services cash calls (Kubernetes DNS name + port).
+accountsBaseUrl: "http://accounts:8081"
+notificationsBaseUrl: "http://notifications:8085"
+
+resources: {}
