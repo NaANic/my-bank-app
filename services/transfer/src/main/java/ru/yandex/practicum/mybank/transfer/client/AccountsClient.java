@@ -19,11 +19,11 @@ public class AccountsClient extends AbstractServiceClient {
 
     private final RestClient restClient;
 
-    public AccountsClient(RestClient.Builder loadBalancedRestClientBuilder,
+    public AccountsClient(RestClient.Builder restClientBuilder,
                           OAuth2AuthorizedClientManager authorizedClientManager,
                           @Value("${bank.accounts-base-url}") String baseUrl) {
         super(authorizedClientManager);
-        this.restClient = loadBalancedRestClientBuilder.baseUrl(baseUrl).build();
+        this.restClient = restClientBuilder.baseUrl(baseUrl).build();
     }
 
     @CircuitBreaker(name = "accounts")
