@@ -14,6 +14,18 @@ spec:
       labels:
         {{- include "notifications.labels" . | nindent 8 }}
     spec:
+      initContainers:
+        - name: wait-for-postgres
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              echo "waiting for {{ .Values.global.postgres.host }}:{{ .Values.global.postgres.port }} ..."
+              until nc -z {{ .Values.global.postgres.host }} {{ .Values.global.postgres.port }}; do
+                sleep 2
+              done
+              echo "postgres is reachable"
       containers:
         - name: notifications
           image: {{ include "notifications.image" . | quote }}
@@ -25,7 +37,6 @@ spec:
             - configMapRef:
                 name: notifications
           env:
-            # DB password comes from the postgres subchart's Secret (single source of truth).
             - name: PG_PASSWORD
               valueFrom:
                 secretKeyRef:
