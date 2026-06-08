@@ -1,14 +1,3 @@
-spring:
-  cloud:
-    consul:
-      enabled: false
-      config:
-        enabled: false
-      discovery:
-        enabled: false
-  config:
-    import: []
-
 logging:
   level:
-    org.springframework.cloud.consul: ERROR
+    org.springframework.cloud.gateway: WARN
