@@ -1,129 +1,229 @@
-# my-bank-app — Sprint 9
+# my-bank-app — Спринт 10 (Kubernetes + Helm)
 
-A walking-skeleton bank built from five Spring Boot 3.5 microservices behind a
-Spring Cloud Gateway, with Consul for discovery + config, Keycloak (OAuth 2.1)
-for both user auth and service auth, and a single PostgreSQL backing every
-service with the **schema-per-service** pattern.
+Учебное банковское приложение из пяти микросервисов на Spring Boot 3.5 за
+шлюзом Spring Cloud Gateway, с Keycloak (OAuth 2.1) для аутентификации
+пользователей и сервис-сервисного взаимодействия и единым PostgreSQL по
+схеме **«отдельная схема на сервис»** (schema-per-service).
 
-Built as Yandex Practicum sprint 9 — see `TASK.md` for the reviewer checklist.
+В десятом спринте проект переведён с Consul (discovery + конфигурация) на
+**нативную модель Kubernetes**, упакованную в зонтичный (umbrella) **Helm**-чарт.
+Consul полностью удалён: сервисы находят друг друга через DNS Kubernetes и
+конфигурируются через переменные окружения (ConfigMap + Secret).
 
----
-
-## What's in the box
-
-```
-                              ┌──────────────┐
-   user's browser ───────────►│   Front-UI   │ Thymeleaf · oauth2Login
-                              │  :8082       │ session cookie + CSRF
-                              └──────┬───────┘
-                                     │ Bearer (user JWT)
-                                     ▼
-                              ┌──────────────┐
-                              │   Gateway    │ Spring Cloud Gateway
-                              │  :8080       │ routes /accounts/** /cash/**
-                              └──────┬───────┘        /transfer/**
-                       ┌─────────────┼─────────────┐
-                       ▼             ▼             ▼
-                 ┌──────────┐  ┌──────────┐  ┌──────────┐
-                 │ Accounts │  │   Cash   │  │ Transfer │   ─┐
-                 │  :8081   │◄─│  :8083   │  │  :8084   │    │ lb://accounts
-                 │          │  │          │──┼─────────►│    │ client_credentials
-                 │  JPA     │  └──────────┘  └──────────┘    │ SCOPE_bank:service
-                 │  Flyway  │
-                 │  outbox  │  ─────────────────────────────►┌──────────────┐
-                 └────┬─────┘  @Scheduled 5s · client_creds  │Notifications │
-                      │                                      │  :8085       │
-                      │ writes outbox row in same TX         │  JPA + log   │
-                      ▼                                      └──────────────┘
-                 ┌──────────────────────────────────┐
-                 │  PostgreSQL (schemas: accounts,  │
-                 │  notifications)                  │
-                 └──────────────────────────────────┘
-
-   ┌─────────┐    ┌───────────┐
-   │ Consul  │    │ Keycloak  │  realm: bank
-   │ :8500   │    │  :8090    │  clients: front-ui (auth-code),
-   │ disc.+  │    │  :9000mgt │           cash/transfer/accounts/notifications
-   │  KV cfg │    │           │           (client_credentials)
-   └─────────┘    └───────────┘
-```
-
-| Pattern | Where |
-| --- | --- |
-| API Gateway | `infra/gateway` |
-| Service Discovery + Externalized Config | Consul (one container does both) |
-| Database per Service | one Postgres, `accounts` + `notifications` schemas, Flyway-managed |
-| RPI (Remote Procedure Invocation) | Spring `RestClient` everywhere |
-| Access Token | Keycloak-issued JWT: auth-code for user, client-credentials for services |
-| Transactional Outbox | `accounts.outbox` written atomically with the balance change; `@Scheduled` poller drains every 5s |
-| Circuit Breaker | Resilience4j `@CircuitBreaker` on every outbound REST call |
-| Contract Testing | Spring Cloud Contract: Accounts → Cash one producer / one consumer pair |
-| UI Composition | Front-UI is the only thing the browser sees; talks to backends via the gateway |
-| Single Service per Host | one container per service in `docker-compose.yml` |
+Чек-лист ревьюера — в `Instruction/task.md`.
 
 ---
 
-## Prerequisites
+## Что изменилось по сравнению со Спринтом 9
 
-- **Java 21** (Eclipse Temurin or any JDK 21)
-- **Maven 3.9+**
-- **Docker** (engine 20+; Docker Compose v2)
-
-Tested against Docker Engine 29.x. The root `pom.xml` pins
-`-Dapi.version=1.45` on Surefire so Testcontainers' bundled `docker-java`
-client speaks the right API version — leave that setting in place.
-
----
-
-## Run the whole stack (one command)
-
-```bash
-docker compose up --build
-```
-
-That command:
-1. Pulls Postgres 16, Consul 1.20, Keycloak 26.
-2. Builds six Spring Boot images via multi-stage Dockerfiles
-   (`maven:3.9-eclipse-temurin-21` → `eclipse-temurin:21-jre`).
-3. Imports `infra/keycloak/import/bank-realm.json` on Keycloak startup
-   (front-ui + cash + transfer + accounts + notifications clients, alice / bob
-   users).
-4. Brings everything up in dependency order via `depends_on`
-   healthchecks.
-
-First build takes 2–3 minutes (Maven downloads). Subsequent runs are
-seconds because the local Maven cache is mounted into BuildKit.
-
-| Service | Host port | Notes |
+| Область | Спринт 9 | Спринт 10 |
 | --- | --- | --- |
-| Front-UI | http://localhost:8082 | the only page a user opens |
-| Gateway | http://localhost:8080 | `/accounts/**`, `/cash/**`, `/transfer/**` |
-| Accounts | http://localhost:8081 | REST + outbox |
-| Cash | http://localhost:8083 | deposit / withdraw |
-| Transfer | http://localhost:8084 | transfer orchestrator |
-| Notifications | http://localhost:8085 | sink |
-| Keycloak (admin UI) | http://localhost:8090 | `admin` / `admin` |
-| Keycloak (mgmt) | http://localhost:9000 | `/health/ready` etc. |
-| Consul UI | http://localhost:8500 | service catalog + KV |
-| Postgres | localhost:5432 | `bank` / `bank` / db `bank` |
+| Service discovery | Consul (`lb://service`) | DNS Kubernetes (`http://service:port`) |
+| Конфигурация | Consul KV + `spring.config.import` | переменные окружения через ConfigMap / Secret |
+| Балансировка на клиенте | `spring-cloud-loadbalancer` | прямой `RestClient` к DNS-имени Service |
+| Сборка / деплой | только `docker-compose` | зонтичный Helm-чарт (`helm/bank`) |
+| Локальная инфраструктура | Consul + Postgres + Keycloak | Postgres + Keycloak (без Consul) |
 
-### Try it
-Open http://localhost:8082 in a browser → redirects to Keycloak → log in as
-**alice / alice** (or **bob / bob**) → land on `main.html` with the
-seeded profile, deposit/withdraw form, and a recipient dropdown.
+Зависимости `spring-cloud-starter-consul-discovery`, `-consul-config` и
+`-loadbalancer` удалены из всех модулей. Бизнес-логика не менялась — изменился
+только способ обнаружения и конфигурирования сервисов.
 
 ---
 
-## Run from IDE or local `mvn`
+## Архитектура
+
+```
+                          (вне кластера)
+   браузер ─────► Front-UI :8082 ─► Gateway NodePort :30080
+                   (Thymeleaf,            │
+                    oauth2Login)          │ внутри кластера
+   ───────────────────────────────────────┼──────────────────────────────
+                                           ▼  (DNS Service, ClusterIP)
+                                   ┌──────────────┐
+                                   │   gateway    │  Spring Cloud Gateway
+                                   │   :8080      │  /accounts/** /cash/**
+                                   └──────┬───────┘  /transfer/**
+                       ┌──────────────────┼──────────────────┐
+                       ▼                  ▼                  ▼
+                 ┌──────────┐       ┌──────────┐       ┌──────────┐
+                 │ accounts │◄──────│   cash   │       │ transfer │
+                 │  :8081   │       │  :8083   │──────►│  :8084   │
+                 │ JPA+Flyway│      └────┬─────┘       └────┬─────┘
+                 │  +outbox │           │ client_credentials │
+                 └────┬─────┘           ▼  (SCOPE bank:service)
+                      │           ┌──────────────┐
+                      │  outbox   │ notifications│
+                      └──────────►│   :8085      │
+                                  │ JPA + Flyway │
+                                  └──────┬───────┘
+                       ┌──────────────────┴───────┐
+                       ▼                           ▼
+                 ┌──────────────┐          ┌───────────────────┐
+                 │  postgres    │          │ keycloak (Service │
+                 │  StatefulSet │          │ ExternalName) ───►│ хост :8090
+                 │  схемы:      │          │ realm: bank       │ (вне кластера)
+                 │  accounts,   │          └───────────────────┘
+                 │  notifications│
+                 └──────────────┘
+```
+
+Keycloak работает **вне** кластера. Service типа `ExternalName` с именем
+`keycloak` сопоставляет внутрикластерное имя `keycloak` с хостом
+(`host.docker.internal`), поэтому поды обращаются к нему по адресу
+`http://keycloak:8090`, а claim `iss` остаётся равным
+`http://localhost:8090/realms/bank` (`KC_HOSTNAME=localhost`).
+
+| Сервис | Порт | Примечание |
+| --- | --- | --- |
+| gateway | 8080 (NodePort 30080) | реактивная маршрутизация, `StripPrefix=1` |
+| accounts | 8081 | JPA + Flyway + транзакционный outbox |
+| cash | 8083 | оркестратор пополнения / снятия |
+| transfer | 8084 | переводы между счетами |
+| notifications | 8085 | приёмник уведомлений, пишет в БД и лог |
+| front-ui | 8082 | Thymeleaf + oauth2Login (запускается на хосте) |
+| postgres | 5432 | StatefulSet, схема на сервис |
+| keycloak | 8090 | на хосте, realm импортируется |
+
+---
+
+## Требования
+
+- Docker Desktop с **включённым Kubernetes** (контекст `docker-desktop`)
+- `kubectl` и `helm` v3
+- JDK 21 и Maven (только для сборки / запуска вне кластера)
+
+---
+
+## Развёртывание в Kubernetes через Helm
+
+Все команды выполняются из корня репозитория.
+
+### 1. Сборка образов сервисов
+
+Kubernetes в Docker Desktop использует общее локальное хранилище образов,
+поэтому локально собранные теги доступны напрямую (`pullPolicy: IfNotPresent`).
 
 ```bash
-# 1. Bring up just the infra (Consul, Postgres, Keycloak)
-docker compose up -d consul postgres keycloak
+docker build -t accounts:0.0.1      -f services/accounts/Dockerfile .
+docker build -t cash:0.0.1          -f services/cash/Dockerfile .
+docker build -t transfer:0.0.1      -f services/transfer/Dockerfile .
+docker build -t notifications:0.0.1 -f services/notifications/Dockerfile .
+docker build -t gateway:0.0.1       -f infra/gateway/Dockerfile .
+```
 
-# 2. Build the world
+### 2. Запуск Keycloak на хосте
+
+```bash
+docker compose up -d keycloak
+# дождитесь статуса healthy, затем:
+curl -s -o /dev/null -w "%{http_code}\n" \
+  http://localhost:8090/realms/bank/.well-known/openid-configuration   # -> 200
+```
+
+### 3. Установка чарта
+
+```bash
+kubectl config use-context docker-desktop      # ВАЖНО: разворачивать только здесь
+kubectl create namespace bank
+helm install bank helm/bank -n bank
+kubectl get pods -n bank -w                     # дождитесь всех 1/1, затем Ctrl-C
+```
+
+`accounts` и `notifications` используют init-контейнер `wait-for-postgres`,
+поэтому запуск проходит без рестартов.
+
+### 4. Проверка встроенными Helm-тестами
+
+```bash
+helm test bank -n bank
+```
+
+Как Helm test-хуки запускаются два набора:
+
+- **connectivity-test** — проверяет по TCP каждый включённый Service по DNS-имени.
+- **gateway-route-test** — обращается к `http://gateway:8080/accounts/me`; любой
+  ответ не из класса 5xx (например, `401` при отсутствии токена) подтверждает,
+  что шлюз направил запрос в живой бэкенд.
+
+### 5. Доступ к приложению
+
+Шлюз опубликован через NodePort `30080`:
+
+```bash
+curl -i http://localhost:30080/accounts/me      # 401 без токена = маршрутизация работает
+```
+
+Чтобы пользоваться веб-интерфейсом, запустите Front-UI на хосте, направив его
+на шлюз через NodePort:
+
+```bash
+GATEWAY_URL=http://localhost:30080 \
+  java -jar services/front-ui/target/front-ui-0.0.1-SNAPSHOT.jar
+# откройте http://localhost:8082 -> вход через Keycloak (alice / alice или bob / bob)
+```
+
+### 6. Остановка и удаление
+
+```bash
+helm uninstall bank -n bank
+kubectl delete namespace bank        # также удаляет PVC PostgreSQL
+docker compose down                  # остановить Keycloak
+```
+
+---
+
+## Модель конфигурации
+
+Каждый сервис читает конфигурацию из переменных окружения с разумными
+значениями по умолчанию `localhost`, зашитыми в `application.yml`, поэтому один
+и тот же jar без изменений работает на ноутбуке, в docker-compose и в Kubernetes.
+
+| Переменная | Кто использует | Значение в кластере |
+| --- | --- | --- |
+| `PG_HOST` / `PG_PASSWORD` | accounts, notifications | `postgres` / из Secret |
+| `OAUTH_ISSUER_URI` | все resource server | `http://localhost:8090/realms/bank` |
+| `OAUTH_JWK_SET_URI` / `OAUTH_TOKEN_URI` | все | `http://keycloak:8090/...` |
+| `OAUTH_CLIENT_ID` / `OAUTH_CLIENT_SECRET` | cash, transfer, accounts | по сервису |
+| `ACCOUNTS_BASE_URL` / `NOTIFICATIONS_BASE_URL` | cash, transfer, accounts | `http://accounts:8081`, `http://notifications:8085` |
+| `ACCOUNTS_URI` / `CASH_URI` / `TRANSFER_URI` | gateway | `http://<svc>:<port>` |
+
+В Kubernetes эти значения задаются через ConfigMap (несекретные) и Secret
+(пароли, секреты клиентов) для каждого сервиса, формируемые из values Helm.
+
+---
+
+## Структура Helm-чарта
+
+```
+helm/bank/
+├── Chart.yaml                 зонтичный чарт; объявляет каждый subchart как зависимость
+├── values.yaml                global.* (image, postgres, keycloak) + переключатели
+├── templates/
+│   ├── keycloak-service.yaml  Service ExternalName -> Keycloak на хосте
+│   └── tests/                 connectivity-test, gateway-route-test
+└── charts/
+    ├── postgres/              StatefulSet + headless Service + ConfigMap/Secret
+    ├── accounts/              Deployment + Service + ConfigMap + Secret (+ init)
+    ├── notifications/         Deployment + Service + ConfigMap (+ init)
+    ├── cash/                  Deployment + Service + ConfigMap + Secret
+    ├── transfer/              Deployment + Service + ConfigMap + Secret
+    └── gateway/               Deployment + NodePort Service + ConfigMap
+```
+
+Каждый subchart можно установить отдельно (в его `values.yaml` есть резервные
+значения `global.*`); зонтичный чарт задаёт общие значения `global.*` и
+переключатель `enabled` для каждого subchart.
+
+---
+
+## Запуск локально без Kubernetes
+
+Consul больше не нужен. Поднимите только Postgres + Keycloak и запустите jar-ы
+(значения по умолчанию уже указывают на `localhost`).
+
+```bash
+docker compose up -d postgres keycloak
 mvn package -DskipTests
-
-# 3. Run each service in a separate terminal (or via your IDE)
 java -jar services/accounts/target/accounts-0.0.1-SNAPSHOT.jar
 java -jar infra/gateway/target/gateway-0.0.1-SNAPSHOT.jar
 java -jar services/cash/target/cash-0.0.1-SNAPSHOT.jar
@@ -132,109 +232,55 @@ java -jar services/notifications/target/notifications-0.0.1-SNAPSHOT.jar
 java -jar services/front-ui/target/front-ui-0.0.1-SNAPSHOT.jar
 ```
 
-Defaults in `application.yml` for every service point at `localhost`, so no
-extra environment variables are needed when running on the host.
-
----
-
-## Tests
+Либо поднять весь стек в контейнерах:
 
 ```bash
-mvn test          # 44 tests across 8 classes, ~70s
+docker compose up --build
+# Front-UI: http://localhost:8082   Gateway: http://localhost:8080
 ```
 
-| Service | Unit + Integration | Contract |
+---
+
+## Тесты
+
+```bash
+mvn install        # полный прогон: unit, slice, интеграционные (Testcontainers), контрактные
+```
+
+| Сервис | Unit / интеграционные | Контрактные |
 | --- | --- | --- |
-| accounts | `AccountServiceTest` (Mockito) · `AccountsIntegrationTest` (Testcontainers Postgres) | `AccountsTest` auto-generated by Spring Cloud Contract from `src/test/resources/contracts/` |
-| cash | `CashControllerTest` (slice, mocked `AccountsClient`) | `AccountsClientContractTest` runs against stubs from the accounts module |
+| accounts | `AccountServiceTest` (Mockito) · `AccountsIntegrationTest` (Testcontainers) | контракты-продюсеры генерируют `AccountsTest` + stubs-jar |
+| cash | `CashControllerTest` (slice) | `AccountsClientContractTest` берёт стабы accounts из classpath |
 | transfer | `TransferControllerTest` | — |
-| notifications | `NotificationsIntegrationTest` (Testcontainers Postgres) | — |
-| front-ui | `MainControllerTest` (`@WebMvcTest`, clients mocked) | — |
-| gateway | `GatewayApplicationTests` (context loads, route IDs registered) | — |
+| notifications | `NotificationsIntegrationTest` (Testcontainers) | — |
+| front-ui | `MainControllerTest` (`@WebMvcTest`) | — |
+| gateway | `GatewayApplicationTests` (контекст + ID маршрутов) | — |
 
-The accounts module installs its stubs jar (`accounts:stubs:…`) to the local
-Maven repository in the **test** phase, so cash's stub-runner can resolve it
-in a single `mvn test` invocation.
+Модуль accounts устанавливает свой stubs-jar (`accounts:…:stubs`) на фазе
+test; cash использует его в режиме stub-runner **CLASSPATH**, поэтому один
+`mvn install` разрешает все зависимости в рамках реактора.
 
----
-
-## OAuth flow at a glance
-
-```
-                       (1) /                        (2) 302 → /oauth2/authorization/keycloak
-   browser  ─────────────────────────────────►  front-ui  ─────────────────────────────────►
-                       (3) 302 → KC /auth                       (4) login form
-            ◄─────────────────────────────────                  ◄────────────────────
-            ──────────────────────────────────►                 ─────────────────────►
-                       (5) POST creds                  (6) 302 → /login/oauth2/code/keycloak
-            ◄─────────────────────────────────  KC               ◄────────────────────
-                       (7) GET callback                          (8) server-side: code → token
-   browser  ─────────────────────────────────►  front-ui  ──── HTTP ───►  http://keycloak:8090/token
-                       (9) session cookie                        (access token in session)
-            ◄─────────────────────────────────
-```
-
-For each REST call to a backend, front-ui pulls the user's access token out of
-`OAuth2AuthorizedClientService` and sets `Authorization: Bearer …`. Cash,
-Transfer, and the outbox poller in Accounts use **client_credentials** with
-scope `bank:service`; backend resource servers reject user JWTs on
-`/internal/**` and reject service JWTs on `/me`.
-
-Inside the compose network the OAuth endpoint URIs are split so the browser
-sees `http://localhost:8090/…` (real, port-forwarded) and backend pods talk to
-Keycloak directly at `http://keycloak:8090/…`. The iss claim on every JWT
-remains `http://localhost:8090/realms/bank` thanks to `KC_HOSTNAME=localhost`.
+Работоспособность развёртывания в Kubernetes проверяется отдельно командой
+`helm test bank -n bank`.
 
 ---
 
-## Repository layout
+## Структура репозитория
 
 ```
 my-bank-app/
-├── pom.xml                                    Spring Boot 3.5 + Spring Cloud 2025.0.0 parent
-├── docker-compose.yml                         9-container stack
+├── pom.xml                     родительский POM: Spring Boot 3.5 + Spring Cloud 2025.0.0
+├── docker-compose.yml          Postgres + Keycloak + 6 сервисов (без Consul)
+├── helm/bank/                  зонтичный Helm-чарт + subcharts
 ├── infra/
-│   ├── gateway/                               Spring Cloud Gateway
-│   └── keycloak/import/bank-realm.json        Realm imported on Keycloak startup
+│   ├── gateway/                Spring Cloud Gateway
+│   └── keycloak/import/        realm, импортируемый при старте Keycloak
 └── services/
-    ├── accounts/                              JPA + Flyway + outbox + REST
-    ├── cash/                                  deposit/withdraw orchestrator
-    ├── transfer/                              account-to-account orchestrator
-    ├── notifications/                         POST /notifications sink (logs + persists)
-    └── front-ui/                              Thymeleaf + Spring Security oauth2Login
-```
-
-Each service follows the same layout: `api/` controllers and DTOs, `domain/`
-JPA entities + repositories (where applicable), `client/` outbound REST
-clients, `config/` Spring `@Configuration` classes.
-
----
-
-## Useful commands
-
-```bash
-# tail logs from one service
-docker compose logs -f accounts
-
-# inspect Consul-registered services
-curl -s http://localhost:8500/v1/agent/services | jq
-
-# inspect a JWT (no signature verification)
-echo "$TOK" | cut -d. -f2 | base64 -d | jq
-
-# poke an internal endpoint with a service token
-SVC=$(curl -s -X POST http://localhost:8090/realms/bank/protocol/openid-connect/token \
-  -d 'grant_type=client_credentials&client_id=cash&client_secret=cash-service-secret' | jq -r .access_token)
-curl -s -H "Authorization: Bearer $SVC" http://localhost:8081/internal/accounts/alice/credit \
-  -H 'Content-Type: application/json' -d '{"amount":1.00}'
-
-# reset balances
-docker exec bank-postgres psql -U bank -d bank \
-  -c "update accounts.account set balance=1000 where login='alice'; update accounts.account set balance=500 where login='bob';"
+    ├── accounts/  cash/  transfer/  notifications/  front-ui/
 ```
 
 ---
 
-## License
+## Лицензия
 
-Educational project (Yandex Practicum sprint).
+Учебный проект (Яндекс Практикум, Спринт 10).
