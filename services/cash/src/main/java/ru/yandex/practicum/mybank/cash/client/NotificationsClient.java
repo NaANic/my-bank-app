@@ -16,11 +16,11 @@ public class NotificationsClient extends AbstractServiceClient {
 
     private final RestClient restClient;
 
-    public NotificationsClient(RestClient.Builder loadBalancedRestClientBuilder,
+    public NotificationsClient(RestClient.Builder restClientBuilder,
                                OAuth2AuthorizedClientManager authorizedClientManager,
                                @Value("${bank.notifications-base-url}") String baseUrl) {
         super(authorizedClientManager);
-        this.restClient = loadBalancedRestClientBuilder.baseUrl(baseUrl).build();
+        this.restClient = restClientBuilder.baseUrl(baseUrl).build();
     }
 
     @CircuitBreaker(name = "notifications")
