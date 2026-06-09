@@ -65,3 +65,6 @@ gateway:
   service:
     type: NodePort
     nodePort: 30080
+
+networkPolicy:
+  enabled: true
