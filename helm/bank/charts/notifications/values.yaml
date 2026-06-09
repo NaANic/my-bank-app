@@ -26,4 +26,10 @@ service:
 # Secret (from the postgres subchart) that holds the DB password.
 postgresSecretName: postgres
 
-resources: {}
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: "1"
+    memory: 768Mi

@@ -28,4 +28,10 @@ oauth:
 accountsBaseUrl: "http://accounts:8081"
 notificationsBaseUrl: "http://notifications:8085"
 
-resources: {}
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: "1"
+    memory: 768Mi

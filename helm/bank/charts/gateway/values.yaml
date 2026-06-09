@@ -23,4 +23,10 @@ routes:
   cashUri: "http://cash:8083"
   transferUri: "http://transfer:8084"
 
-resources: {}
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: "1"
+    memory: 768Mi
