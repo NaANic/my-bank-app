@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,10 +33,20 @@ public class OutboxPoller {
             try {
                 notifications.send(entry.getLogin(), entry.getKind(), entry.getMessage());
                 markSent(entry.getId());
+            } catch (ObjectOptimisticLockingFailureException e) {
+                log.debug("outbox#{} already processed by another instance, skipping", entry.getId());
             } catch (Exception e) {
-                int attempts = bumpAttempts(entry.getId());
-                log.warn("outbox#{} failed (attempts={}): {}", entry.getId(), attempts, e.toString());
+                recordFailure(entry.getId(), e);
             }
+        }
+    }
+
+    private void recordFailure(Long id, Exception cause) {
+        try {
+            int attempts = bumpAttempts(id);
+            log.warn("outbox#{} failed (attempts={}): {}", id, attempts, cause.toString());
+        } catch (ObjectOptimisticLockingFailureException e) {
+            log.debug("outbox#{} concurrently modified while recording failure, skipping", id);
         }
     }
 

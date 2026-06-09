@@ -6,6 +6,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 
 import java.time.OffsetDateTime;
 
@@ -35,6 +36,10 @@ public class OutboxEntry {
     @Column(name = "attempts", nullable = false)
     private int attempts;
 
+    @Version
+    @Column(name = "version", nullable = false)
+    private int version;
+
     protected OutboxEntry() {}
 
     public OutboxEntry(String login, String kind, String message) {
@@ -52,6 +57,7 @@ public class OutboxEntry {
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public OffsetDateTime getSentAt() { return sentAt; }
     public int getAttempts() { return attempts; }
+    public int getVersion() { return version; }
 
     public void markSent() {
         this.sentAt = OffsetDateTime.now();
