@@ -1,5 +1,8 @@
 package ru.yandex.practicum.mybank.transfer.client;
 
+import ru.yandex.practicum.mybank.common.AbstractServiceClient;
+import ru.yandex.practicum.mybank.common.AccountsServiceException;
+
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
@@ -7,7 +10,7 @@ import org.springframework.security.oauth2.client.OAuth2AuthorizedClientManager;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
-import ru.yandex.practicum.mybank.transfer.api.AccountSnapshot;
+import ru.yandex.practicum.mybank.common.AccountSnapshot;
 
 import java.math.BigDecimal;
 import java.util.Map;

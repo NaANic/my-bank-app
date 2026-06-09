@@ -1,5 +1,7 @@
 package ru.yandex.practicum.mybank.transfer.api;
 
+import ru.yandex.practicum.mybank.common.AccountSnapshot;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -8,8 +10,8 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import ru.yandex.practicum.mybank.transfer.AbstractTransferIntegrationTest;
 import ru.yandex.practicum.mybank.transfer.client.AccountsClient;
-import ru.yandex.practicum.mybank.transfer.client.AccountsServiceException;
-import ru.yandex.practicum.mybank.transfer.client.NotificationsClient;
+import ru.yandex.practicum.mybank.common.AccountsServiceException;
+import ru.yandex.practicum.mybank.common.NotificationsClient;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
