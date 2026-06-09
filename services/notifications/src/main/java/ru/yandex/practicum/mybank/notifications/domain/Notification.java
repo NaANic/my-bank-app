@@ -6,6 +6,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.OffsetDateTime;
 
@@ -26,7 +27,8 @@ public class Notification {
     @Column(name = "message", nullable = false)
     private String message;
 
-    @Column(name = "created_at", nullable = false)
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
 
     protected Notification() {}
@@ -35,7 +37,6 @@ public class Notification {
         this.login = login;
         this.kind = kind;
         this.message = message;
-        this.createdAt = OffsetDateTime.now();
     }
 
     public Long getId() { return id; }
