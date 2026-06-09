@@ -19,21 +19,21 @@ spec:
         - |
           set -e
           {{- if .Values.postgres.enabled }}
-          echo "checking postgres:5432"; nc -z -w 5 postgres 5432
+          echo "checking postgres:5432 (tcp)"; nc -z -w 5 postgres 5432
           {{- end }}
           {{- if .Values.accounts.enabled }}
-          echo "checking accounts:8081"; nc -z -w 5 accounts 8081
+          echo "checking accounts health"; wget -q -O - http://accounts:8081/actuator/health | grep -q '"status":"UP"'
           {{- end }}
           {{- if .Values.notifications.enabled }}
-          echo "checking notifications:8085"; nc -z -w 5 notifications 8085
+          echo "checking notifications health"; wget -q -O - http://notifications:8085/actuator/health | grep -q '"status":"UP"'
           {{- end }}
           {{- if .Values.cash.enabled }}
-          echo "checking cash:8083"; nc -z -w 5 cash 8083
+          echo "checking cash health"; wget -q -O - http://cash:8083/actuator/health | grep -q '"status":"UP"'
           {{- end }}
           {{- if .Values.transfer.enabled }}
-          echo "checking transfer:8084"; nc -z -w 5 transfer 8084
+          echo "checking transfer health"; wget -q -O - http://transfer:8084/actuator/health | grep -q '"status":"UP"'
           {{- end }}
           {{- if .Values.gateway.enabled }}
-          echo "checking gateway:8080"; nc -z -w 5 gateway 8080
+          echo "checking gateway health"; wget -q -O - http://gateway:8080/actuator/health | grep -q '"status":"UP"'
           {{- end }}
-          echo "all enabled services are reachable"
+          echo "all enabled services report healthy"
