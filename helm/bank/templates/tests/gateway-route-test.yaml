@@ -18,10 +18,14 @@ spec:
         - sh
         - -c
         - |
-          code=$(curl -s -o /dev/null -w "%{http_code}" http://gateway:8080/accounts/me || echo 000)
-          echo "GET http://gateway:8080/accounts/me -> $code"
-          case "$code" in
-            5*|000) echo "gateway could not reach a backend"; exit 1 ;;
-            *) echo "gateway routing works (status $code)"; exit 0 ;;
-          esac
+          set -e
+          for svc in accounts cash transfer; do
+            url="http://gateway:8080/$svc/actuator/health"
+            code=$(curl -s -o /dev/null -w "%{http_code}" "$url" || echo 000)
+            echo "GET $url -> $code"
+            if [ "$code" != "200" ]; then
+              echo "route /$svc/** did not reach a healthy backend"; exit 1
+            fi
+          done
+          echo "all gateway routes reach healthy backends"
 {{- end }}
