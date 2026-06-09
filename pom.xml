@@ -24,6 +24,7 @@
     </properties>
 
     <modules>
+        <module>infra/common</module>
         <module>services/front-ui</module>
         <module>services/accounts</module>
         <module>services/cash</module>
