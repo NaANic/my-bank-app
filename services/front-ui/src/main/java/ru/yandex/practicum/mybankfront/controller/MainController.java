@@ -61,6 +61,10 @@ public class MainController {
             return "redirect:/account";
         }
         String[] parts = name.trim().split("\\s+", 2);
+        if (parts.length < 2) {
+            redirect.addFlashAttribute("errors", List.of("Введите фамилию и имя через пробел"));
+            return "redirect:/account";
+        }
         ProfileUpdate update = new ProfileUpdate(parts[1], parts[0], birthdate);
         try {
             accounts.updateMe(update);
