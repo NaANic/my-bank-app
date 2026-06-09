@@ -45,7 +45,7 @@ resilience4j:
         wait-duration-in-open-state: 15s
         permitted-number-of-calls-in-half-open-state: 2
         ignore-exceptions:
-          - ru.yandex.practicum.mybank.cash.client.AccountsServiceException
+          - ru.yandex.practicum.mybank.common.AccountsServiceException
       notifications:
         sliding-window-type: count_based
         sliding-window-size: 8
