@@ -84,10 +84,10 @@ public class MainController {
         BigDecimal amount = BigDecimal.valueOf(value);
         try {
             switch (action) {
-                case PUT -> cash.deposit(amount);
-                case GET -> cash.withdraw(amount);
+                case DEPOSIT -> cash.deposit(amount);
+                case WITHDRAW -> cash.withdraw(amount);
             }
-            redirect.addFlashAttribute("info", action == CashAction.PUT
+            redirect.addFlashAttribute("info", action == CashAction.DEPOSIT
                     ? "Счёт пополнен на " + value + " руб."
                     : "Снято " + value + " руб.");
         } catch (RestClientResponseException e) {
