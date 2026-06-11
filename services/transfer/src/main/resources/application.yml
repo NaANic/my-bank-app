@@ -1,35 +1,20 @@
 spring:
   application:
     name: transfer
-  config:
-    import: "optional:consul:"
-  cloud:
-    consul:
-      host: ${CONSUL_HOST:localhost}
-      port: ${CONSUL_PORT:8500}
-      discovery:
-        instance-id: ${spring.application.name}-${random.value}
-        prefer-ip-address: true
-      config:
-        enabled: true
-        format: yaml
-        prefix: config
-        default-context: ${spring.application.name}
-        fail-fast: false
 
   security:
     oauth2:
       client:
         registration:
           accounts-service:
-            client-id: transfer
-            client-secret: transfer-service-secret
+            client-id: ${OAUTH_CLIENT_ID:transfer}
+            client-secret: ${OAUTH_CLIENT_SECRET:transfer-service-secret}
             authorization-grant-type: client_credentials
             scope: bank:service
             provider: keycloak
           notifications-service:
-            client-id: transfer
-            client-secret: transfer-service-secret
+            client-id: ${OAUTH_CLIENT_ID:transfer}
+            client-secret: ${OAUTH_CLIENT_SECRET:transfer-service-secret}
             authorization-grant-type: client_credentials
             scope: bank:service
             provider: keycloak
@@ -46,8 +31,8 @@ server:
   port: 8084
 
 bank:
-  accounts-base-url: ${ACCOUNTS_BASE_URL:http://accounts}
-  notifications-base-url: ${NOTIFICATIONS_BASE_URL:http://notifications}
+  accounts-base-url: ${ACCOUNTS_BASE_URL:http://localhost:8081}
+  notifications-base-url: ${NOTIFICATIONS_BASE_URL:http://localhost:8085}
 
 resilience4j:
   circuitbreaker:
@@ -60,7 +45,7 @@ resilience4j:
         wait-duration-in-open-state: 15s
         permitted-number-of-calls-in-half-open-state: 2
         ignore-exceptions:
-          - ru.yandex.practicum.mybank.transfer.client.AccountsServiceException
+          - ru.yandex.practicum.mybank.common.AccountsServiceException
       notifications:
         sliding-window-type: count_based
         sliding-window-size: 8

@@ -77,7 +77,7 @@ class MainControllerTest {
                 .thenReturn(new Profile("alice", "Alice", "Andreeva",
                         LocalDate.of(1990, 4, 12), new BigDecimal("1100.00")));
 
-        mockMvc.perform(post("/cash").param("value", "100").param("action", "PUT"))
+        mockMvc.perform(post("/cash").param("value", "100").param("action", "DEPOSIT"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/account"))
                 .andExpect(flash().attribute("info", "Счёт пополнен на 100 руб."));
@@ -89,7 +89,7 @@ class MainControllerTest {
         when(cashClient.withdraw(any(BigDecimal.class)))
                 .thenThrow(HttpClientErrorException.create(BAD_REQUEST, "Bad", null, body, StandardCharsets.UTF_8));
 
-        mockMvc.perform(post("/cash").param("value", "9999").param("action", "GET"))
+        mockMvc.perform(post("/cash").param("value", "9999").param("action", "WITHDRAW"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/account"))
                 .andExpect(flash().attribute("errors", List.of("Недостаточно средств на счёте")));

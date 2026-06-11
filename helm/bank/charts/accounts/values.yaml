@@ -1,0 +1,44 @@
+# Defaults used when this subchart is installed on its own.
+# When deployed via the umbrella, global.* is supplied by the umbrella values.yaml.
+global:
+  image:
+    registry: ""
+    pullPolicy: IfNotPresent
+    tag: "0.0.1"
+  postgres:
+    host: postgres
+    port: 5432
+    database: bank
+    username: bank
+  keycloak:
+    issuerUri: "http://localhost:8090/realms/bank"
+    jwkSetUri: "http://keycloak:8090/realms/bank/protocol/openid-connect/certs"
+    tokenUri: "http://keycloak:8090/realms/bank/protocol/openid-connect/token"
+
+image:
+  repository: accounts
+  tag: ""          # "" -> falls back to global.image.tag
+
+replicaCount: 1
+
+service:
+  port: 8081
+
+# OAuth2 client-credentials identity used for service-to-service calls.
+oauth:
+  clientId: accounts
+  clientSecret: accounts-service-secret
+
+# Base URL of the notifications service (Kubernetes DNS name + port).
+notificationsBaseUrl: "http://notifications:8085"
+
+# Secret (from the postgres subchart) that holds the DB password.
+postgresSecretName: postgres
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: "1"
+    memory: 768Mi

@@ -1,5 +1,7 @@
 package ru.yandex.practicum.mybank.cash.api;
 
+import ru.yandex.practicum.mybank.common.AccountSnapshot;
+
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -9,7 +11,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 import ru.yandex.practicum.mybank.cash.client.AccountsClient;
-import ru.yandex.practicum.mybank.cash.client.NotificationsClient;
+import ru.yandex.practicum.mybank.common.NotificationsClient;
 
 @RestController
 public class CashController {

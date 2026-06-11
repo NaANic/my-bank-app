@@ -1,5 +1,8 @@
 package ru.yandex.practicum.mybank.cash.client;
 
+import ru.yandex.practicum.mybank.common.AbstractServiceClient;
+import ru.yandex.practicum.mybank.common.AccountsServiceException;
+
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
@@ -7,7 +10,7 @@ import org.springframework.security.oauth2.client.OAuth2AuthorizedClientManager;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
-import ru.yandex.practicum.mybank.cash.api.AccountSnapshot;
+import ru.yandex.practicum.mybank.common.AccountSnapshot;
 
 import java.math.BigDecimal;
 import java.util.Map;
@@ -19,11 +22,11 @@ public class AccountsClient extends AbstractServiceClient {
 
     private final RestClient restClient;
 
-    public AccountsClient(RestClient.Builder loadBalancedRestClientBuilder,
+    public AccountsClient(RestClient.Builder restClientBuilder,
                           OAuth2AuthorizedClientManager authorizedClientManager,
                           @Value("${bank.accounts-base-url}") String baseUrl) {
         super(authorizedClientManager);
-        this.restClient = loadBalancedRestClientBuilder.baseUrl(baseUrl).build();
+        this.restClient = restClientBuilder.baseUrl(baseUrl).build();
     }
 
     @CircuitBreaker(name = "accounts")

@@ -1,5 +1,7 @@
 package ru.yandex.practicum.mybank.cash.client;
 
+import ru.yandex.practicum.mybank.common.AccountsServiceException;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -29,8 +31,8 @@ import static org.mockito.Mockito.when;
 @SpringBootTest
 @ActiveProfiles("test")
 @AutoConfigureStubRunner(
-        ids = "ru.yandex.practicum:accounts:+:stubs:6666",
-        stubsMode = StubRunnerProperties.StubsMode.LOCAL
+        ids = "ru.yandex.practicum:accounts:0.0.1-SNAPSHOT:stubs:6666",
+        stubsMode = StubRunnerProperties.StubsMode.CLASSPATH
 )
 @TestPropertySource(properties = {
         "bank.accounts-base-url=http://localhost:6666"

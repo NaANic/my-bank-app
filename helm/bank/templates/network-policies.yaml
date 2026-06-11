@@ -1,0 +1,147 @@
+{{- if .Values.networkPolicy.enabled }}
+{{- if .Values.postgres.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: postgres
+  labels:
+    app.kubernetes.io/part-of: bank
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: postgres
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: accounts
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: notifications
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: test
+      ports:
+        - protocol: TCP
+          port: {{ .Values.global.postgres.port }}
+{{- end }}
+{{- if .Values.accounts.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: accounts
+  labels:
+    app.kubernetes.io/part-of: bank
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: accounts
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: gateway
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: cash
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: transfer
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: test
+      ports:
+        - protocol: TCP
+          port: 8081
+{{- end }}
+{{- if .Values.notifications.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: notifications
+  labels:
+    app.kubernetes.io/part-of: bank
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: notifications
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: accounts
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: cash
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: transfer
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: test
+      ports:
+        - protocol: TCP
+          port: 8085
+{{- end }}
+{{- if .Values.cash.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: cash
+  labels:
+    app.kubernetes.io/part-of: bank
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: cash
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: gateway
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: test
+      ports:
+        - protocol: TCP
+          port: 8083
+{{- end }}
+{{- if .Values.transfer.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: transfer
+  labels:
+    app.kubernetes.io/part-of: bank
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: transfer
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: gateway
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: test
+      ports:
+        - protocol: TCP
+          port: 8084
+{{- end }}
+{{- end }}

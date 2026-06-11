@@ -1,0 +1,39 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ .Release.Name }}-connectivity-test"
+  labels:
+    app.kubernetes.io/part-of: bank
+    app.kubernetes.io/component: test
+  annotations:
+    "helm.sh/hook": test
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  restartPolicy: Never
+  containers:
+    - name: connectivity
+      image: busybox:1.36
+      command:
+        - sh
+        - -c
+        - |
+          set -e
+          {{- if .Values.postgres.enabled }}
+          echo "checking postgres:5432 (tcp)"; nc -z -w 5 postgres 5432
+          {{- end }}
+          {{- if .Values.accounts.enabled }}
+          echo "checking accounts health"; wget -q -O - http://accounts:8081/actuator/health | grep -q '"status":"UP"'
+          {{- end }}
+          {{- if .Values.notifications.enabled }}
+          echo "checking notifications health"; wget -q -O - http://notifications:8085/actuator/health | grep -q '"status":"UP"'
+          {{- end }}
+          {{- if .Values.cash.enabled }}
+          echo "checking cash health"; wget -q -O - http://cash:8083/actuator/health | grep -q '"status":"UP"'
+          {{- end }}
+          {{- if .Values.transfer.enabled }}
+          echo "checking transfer health"; wget -q -O - http://transfer:8084/actuator/health | grep -q '"status":"UP"'
+          {{- end }}
+          {{- if .Values.gateway.enabled }}
+          echo "checking gateway health"; wget -q -O - http://gateway:8080/actuator/health | grep -q '"status":"UP"'
+          {{- end }}
+          echo "all enabled services report healthy"

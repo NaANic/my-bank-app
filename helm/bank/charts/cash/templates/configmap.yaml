@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cash
+  labels:
+    {{- include "cash.labels" . | nindent 4 }}
+data:
+  OAUTH_ISSUER_URI: {{ .Values.global.keycloak.issuerUri | quote }}
+  OAUTH_JWK_SET_URI: {{ .Values.global.keycloak.jwkSetUri | quote }}
+  OAUTH_TOKEN_URI: {{ .Values.global.keycloak.tokenUri | quote }}
+  OAUTH_CLIENT_ID: {{ .Values.oauth.clientId | quote }}
+  ACCOUNTS_BASE_URL: {{ .Values.accountsBaseUrl | quote }}
+  NOTIFICATIONS_BASE_URL: {{ .Values.notificationsBaseUrl | quote }}

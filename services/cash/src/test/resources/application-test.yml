@@ -1,14 +1,4 @@
 spring:
-  cloud:
-    consul:
-      enabled: false
-      config:
-        enabled: false
-      discovery:
-        enabled: false
-  config:
-    import: []
-
   security:
     oauth2:
       client:
@@ -36,5 +26,4 @@ resilience4j:
 
 logging:
   level:
-    org.springframework.cloud.consul: ERROR
     org.springframework.security: WARN

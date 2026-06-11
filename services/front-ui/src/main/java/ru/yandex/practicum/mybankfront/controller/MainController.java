@@ -61,6 +61,10 @@ public class MainController {
             return "redirect:/account";
         }
         String[] parts = name.trim().split("\\s+", 2);
+        if (parts.length < 2) {
+            redirect.addFlashAttribute("errors", List.of("Введите фамилию и имя через пробел"));
+            return "redirect:/account";
+        }
         ProfileUpdate update = new ProfileUpdate(parts[1], parts[0], birthdate);
         try {
             accounts.updateMe(update);
@@ -84,10 +88,10 @@ public class MainController {
         BigDecimal amount = BigDecimal.valueOf(value);
         try {
             switch (action) {
-                case PUT -> cash.deposit(amount);
-                case GET -> cash.withdraw(amount);
+                case DEPOSIT -> cash.deposit(amount);
+                case WITHDRAW -> cash.withdraw(amount);
             }
-            redirect.addFlashAttribute("info", action == CashAction.PUT
+            redirect.addFlashAttribute("info", action == CashAction.DEPOSIT
                     ? "Счёт пополнен на " + value + " руб."
                     : "Снято " + value + " руб.");
         } catch (RestClientResponseException e) {

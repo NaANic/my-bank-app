@@ -1,0 +1,32 @@
+# Defaults used when this subchart is installed on its own.
+# When deployed via the umbrella, global.* is supplied by the umbrella values.yaml.
+global:
+  image:
+    registry: ""
+    pullPolicy: IfNotPresent
+    tag: "0.0.1"
+
+image:
+  repository: gateway
+  tag: ""          # "" -> falls back to global.image.tag
+
+replicaCount: 1
+
+service:
+  type: NodePort        # NodePort so the external Front-UI can reach the gateway
+  port: 8080
+  nodePort: 30080
+
+# Backend service URIs the gateway routes to (Kubernetes DNS name + port).
+routes:
+  accountsUri: "http://accounts:8081"
+  cashUri: "http://cash:8083"
+  transferUri: "http://transfer:8084"
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: "1"
+    memory: 768Mi
