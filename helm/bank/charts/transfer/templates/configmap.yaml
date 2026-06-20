@@ -10,4 +10,5 @@ data:
   OAUTH_TOKEN_URI: {{ .Values.global.keycloak.tokenUri | quote }}
   OAUTH_CLIENT_ID: {{ .Values.oauth.clientId | quote }}
   ACCOUNTS_BASE_URL: {{ .Values.accountsBaseUrl | quote }}
-  NOTIFICATIONS_BASE_URL: {{ .Values.notificationsBaseUrl | quote }}
+  KAFKA_BOOTSTRAP_SERVERS: {{ .Values.global.kafka.bootstrapServers | quote }}
+  BANK_NOTIFICATIONS_TOPIC: {{ .Values.global.kafka.notificationsTopic | quote }}

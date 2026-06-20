@@ -14,6 +14,9 @@ global:
     issuerUri: "http://localhost:8090/realms/bank"
     jwkSetUri: "http://keycloak:8090/realms/bank/protocol/openid-connect/certs"
     tokenUri: "http://keycloak:8090/realms/bank/protocol/openid-connect/token"
+  kafka:
+    bootstrapServers: "kafka:9092"
+    notificationsTopic: notifications
 
 image:
   repository: accounts

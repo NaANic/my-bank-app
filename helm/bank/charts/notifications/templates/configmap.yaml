@@ -9,5 +9,5 @@ data:
   PG_PORT: {{ .Values.global.postgres.port | quote }}
   PG_DB: {{ .Values.global.postgres.database | quote }}
   PG_USER: {{ .Values.global.postgres.username | quote }}
-  OAUTH_ISSUER_URI: {{ .Values.global.keycloak.issuerUri | quote }}
-  OAUTH_JWK_SET_URI: {{ .Values.global.keycloak.jwkSetUri | quote }}
+  KAFKA_BOOTSTRAP_SERVERS: {{ .Values.global.kafka.bootstrapServers | quote }}
+  BANK_NOTIFICATIONS_TOPIC: {{ .Values.global.kafka.notificationsTopic | quote }}
