@@ -22,17 +22,24 @@ spring:
     default-schema: notifications
     create-schemas: true
 
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          issuer-uri: ${OAUTH_ISSUER_URI:http://localhost:8090/realms/bank}
-          jwk-set-uri: ${OAUTH_JWK_SET_URI:http://localhost:8090/realms/bank/protocol/openid-connect/certs}
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9094}
+    consumer:
+      group-id: notifications
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    listener:
+      ack-mode: RECORD
+
+bank:
+  notifications-topic: ${BANK_NOTIFICATIONS_TOPIC:notifications}
 
 server:
   port: 8085
 
 logging:
   level:
-    org.springframework.security: INFO
     ru.yandex.practicum.mybank.notifications: INFO
+    org.apache.kafka: WARN
