@@ -1,34 +1,52 @@
 package ru.yandex.practicum.mybank.common;
 
-import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
-import org.springframework.http.MediaType;
-import org.springframework.security.oauth2.client.OAuth2AuthorizedClientManager;
-import org.springframework.web.client.RestClient;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.kafka.core.KafkaTemplate;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 
-public class NotificationsClient extends AbstractServiceClient {
+/**
+ * Sends notification events to Kafka (JSON value, login as key).
+ * Blocks on the broker ack (acks=all) to provide at-least-once delivery:
+ * a failed send surfaces as an exception so the caller can retry or skip.
+ */
+public class NotificationsClient {
 
-    static final String REGISTRATION_ID = "notifications-service";
+    private final KafkaTemplate<String, String> kafkaTemplate;
+    private final ObjectMapper objectMapper;
+    private final String topic;
 
-    private final RestClient restClient;
-
-    public NotificationsClient(RestClient.Builder restClientBuilder,
-                               OAuth2AuthorizedClientManager authorizedClientManager,
-                               String baseUrl) {
-        super(authorizedClientManager);
-        this.restClient = restClientBuilder.baseUrl(baseUrl).build();
+    public NotificationsClient(KafkaTemplate<String, String> kafkaTemplate,
+                               ObjectMapper objectMapper,
+                               String topic) {
+        this.kafkaTemplate = kafkaTemplate;
+        this.objectMapper = objectMapper;
+        this.topic = topic;
     }
 
-    @CircuitBreaker(name = "notifications")
     public void send(String login, String kind, String message) {
-        String token = serviceToken(REGISTRATION_ID);
-        restClient.post()
-                .uri("/notifications")
-                .headers(h -> h.setBearerAuth(token))
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(Map.of("login", login, "kind", kind, "message", message))
-                .retrieve()
-                .toBodilessEntity();
+        Map<String, String> event = new LinkedHashMap<>();
+        event.put("login", login);
+        event.put("kind", kind);
+        event.put("message", message);
+
+        String payload;
+        try {
+            payload = objectMapper.writeValueAsString(event);
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("Failed to serialize notification event", e);
+        }
+
+        try {
+            kafkaTemplate.send(topic, login, payload).get();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Interrupted while sending notification", e);
+        } catch (ExecutionException e) {
+            throw new IllegalStateException("Failed to send notification to Kafka", e.getCause());
+        }
     }
 }
