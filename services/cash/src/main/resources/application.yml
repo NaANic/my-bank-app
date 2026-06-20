@@ -12,12 +12,6 @@ spring:
             authorization-grant-type: client_credentials
             scope: bank:service
             provider: keycloak
-          notifications-service:
-            client-id: ${OAUTH_CLIENT_ID:cash}
-            client-secret: ${OAUTH_CLIENT_SECRET:cash-service-secret}
-            authorization-grant-type: client_credentials
-            scope: bank:service
-            provider: keycloak
         provider:
           keycloak:
             token-uri: ${OAUTH_TOKEN_URI:http://localhost:8090/realms/bank/protocol/openid-connect/token}
@@ -27,12 +21,21 @@ spring:
           issuer-uri: ${OAUTH_ISSUER_URI:http://localhost:8090/realms/bank}
           jwk-set-uri: ${OAUTH_JWK_SET_URI:http://localhost:8090/realms/bank/protocol/openid-connect/certs}
 
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9094}
+    producer:
+      acks: all
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      properties:
+        enable.idempotence: true
+
 server:
   port: 8083
 
 bank:
   accounts-base-url: ${ACCOUNTS_BASE_URL:http://localhost:8081}
-  notifications-base-url: ${NOTIFICATIONS_BASE_URL:http://localhost:8085}
+  notifications-topic: ${BANK_NOTIFICATIONS_TOPIC:notifications}
 
 resilience4j:
   circuitbreaker:
@@ -46,13 +49,6 @@ resilience4j:
         permitted-number-of-calls-in-half-open-state: 2
         ignore-exceptions:
           - ru.yandex.practicum.mybank.common.AccountsServiceException
-      notifications:
-        sliding-window-type: count_based
-        sliding-window-size: 8
-        minimum-number-of-calls: 4
-        failure-rate-threshold: 50
-        wait-duration-in-open-state: 30s
-        permitted-number-of-calls-in-half-open-state: 2
 
 logging:
   level:
