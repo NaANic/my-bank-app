@@ -74,17 +74,10 @@ spec:
       app.kubernetes.io/name: notifications
   policyTypes:
     - Ingress
+  # notifications больше не вызывается по HTTP — только через Kafka.
+  # Ingress оставлен для health-check (helm connectivity test + пробы kubelet).
   ingress:
     - from:
-        - podSelector:
-            matchLabels:
-              app.kubernetes.io/name: accounts
-        - podSelector:
-            matchLabels:
-              app.kubernetes.io/name: cash
-        - podSelector:
-            matchLabels:
-              app.kubernetes.io/name: transfer
         - podSelector:
             matchLabels:
               app.kubernetes.io/component: test
@@ -143,5 +136,40 @@ spec:
       ports:
         - protocol: TCP
           port: 8084
+{{- end }}
+{{- if .Values.kafka.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: kafka
+  labels:
+    app.kubernetes.io/part-of: bank
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: kafka
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: accounts
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: cash
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: transfer
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: notifications
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: test
+      ports:
+        - protocol: TCP
+          port: 9092
 {{- end }}
 {{- end }}

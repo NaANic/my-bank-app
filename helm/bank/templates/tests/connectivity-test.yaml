@@ -21,6 +21,9 @@ spec:
           {{- if .Values.postgres.enabled }}
           echo "checking postgres:5432 (tcp)"; nc -z -w 5 postgres 5432
           {{- end }}
+          {{- if .Values.kafka.enabled }}
+          echo "checking kafka:9092 (tcp)"; nc -z -w 5 kafka 9092
+          {{- end }}
           {{- if .Values.accounts.enabled }}
           echo "checking accounts health"; wget -q -O - http://accounts:8081/actuator/health | grep -q '"status":"UP"'
           {{- end }}
