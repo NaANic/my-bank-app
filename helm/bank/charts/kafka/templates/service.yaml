@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka
+  labels:
+    app.kubernetes.io/name: kafka
+    app.kubernetes.io/component: kafka
+spec:
+  clusterIP: None          # headless: "kafka" resolves to the broker pod
+  selector:
+    app.kubernetes.io/name: kafka
+  ports:
+    - name: client
+      port: {{ .Values.service.port }}
+      targetPort: client
