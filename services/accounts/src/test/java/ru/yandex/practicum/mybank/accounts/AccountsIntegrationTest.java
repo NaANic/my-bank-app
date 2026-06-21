@@ -115,7 +115,7 @@ class AccountsIntegrationTest extends AbstractAccountsIntegrationTest {
                 .andExpect(jsonPath("$.balance").value(1050.00));
 
         assertThat(outbox.count()).isEqualTo(1);
-        assertThat(outbox.findAll().get(0).getKind()).isEqualTo("balance_credit");
+        assertThat(outbox.findAll().get(0).getKind()).isEqualTo("BALANCE_CREDIT");
     }
 
     @Test

@@ -10,6 +10,7 @@ import ru.yandex.practicum.mybank.accounts.domain.Account;
 import ru.yandex.practicum.mybank.accounts.domain.AccountRepository;
 import ru.yandex.practicum.mybank.accounts.outbox.OutboxEntry;
 import ru.yandex.practicum.mybank.accounts.outbox.OutboxRepository;
+import ru.yandex.practicum.mybank.common.NotificationKind;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -62,8 +63,7 @@ public class AccountService {
         Account account = requireExisting(login);
         account.setBalance(account.getBalance().add(amount));
         AccountDto dto = toDto(repository.save(account));
-        outbox.save(new OutboxEntry(login, "balance_credit",
-                "Изменение баланса " + login + ": +" + amount + " ₽ (баланс: " + dto.balance() + " ₽)"));
+        outbox.save(new OutboxEntry(login, NotificationKind.BALANCE_CREDIT.name(), amount));
         return dto;
     }
 
@@ -89,10 +89,8 @@ public class AccountService {
         to.setBalance(to.getBalance().add(amount));
         repository.save(to);
         AccountDto dto = toDto(repository.save(from));
-        outbox.save(new OutboxEntry(fromLogin, "balance_transfer_out",
-                "Изменение баланса " + fromLogin + ": -" + amount + " ₽ → " + toLogin + " (баланс: " + dto.balance() + " ₽)"));
-        outbox.save(new OutboxEntry(toLogin, "balance_transfer_in",
-                "Изменение баланса " + toLogin + ": +" + amount + " ₽ ← " + fromLogin + " (баланс: " + to.getBalance() + " ₽)"));
+        outbox.save(new OutboxEntry(fromLogin, NotificationKind.BALANCE_TRANSFER_OUT.name(), amount));
+        outbox.save(new OutboxEntry(toLogin, NotificationKind.BALANCE_TRANSFER_IN.name(), amount));
         return dto;
     }
 
@@ -114,8 +112,7 @@ public class AccountService {
         }
         account.setBalance(account.getBalance().subtract(amount));
         AccountDto dto = toDto(repository.save(account));
-        outbox.save(new OutboxEntry(login, "balance_debit",
-                "Изменение баланса " + login + ": -" + amount + " ₽ (баланс: " + dto.balance() + " ₽)"));
+        outbox.save(new OutboxEntry(login, NotificationKind.BALANCE_DEBIT.name(), amount));
         return dto;
     }
 
