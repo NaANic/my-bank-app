@@ -9,7 +9,7 @@ import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
 /**
- * Sends notification events to Kafka (JSON value, login as key).
+ * Publishes notification events to Kafka (JSON value, login as key).
  * Blocks on the broker ack (acks=all) to provide at-least-once delivery:
  * a failed send surfaces as an exception so the caller can retry or skip.
  */
@@ -27,21 +27,32 @@ public class NotificationsClient {
         this.topic = topic;
     }
 
+    /** Publishes a structured notification event keyed by login. */
+    public void publish(NotificationEvent event) {
+        send(event.login(), serialize(event));
+    }
+
+    /** @deprecated legacy free-form payload; kept until all producers use {@link #publish}. */
+    @Deprecated
     public void send(String login, String kind, String message) {
         Map<String, String> event = new LinkedHashMap<>();
         event.put("login", login);
         event.put("kind", kind);
         event.put("message", message);
+        send(login, serialize(event));
+    }
 
-        String payload;
+    private String serialize(Object value) {
         try {
-            payload = objectMapper.writeValueAsString(event);
+            return objectMapper.writeValueAsString(value);
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("Failed to serialize notification event", e);
         }
+    }
 
+    private void send(String key, String payload) {
         try {
-            kafkaTemplate.send(topic, login, payload).get();
+            kafkaTemplate.send(topic, key, payload).get();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new IllegalStateException("Interrupted while sending notification", e);
