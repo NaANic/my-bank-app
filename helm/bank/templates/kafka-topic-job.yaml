@@ -1,0 +1,38 @@
+{{- if .Values.kafka.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: "{{ .Release.Name }}-kafka-topic-init"
+  labels:
+    app.kubernetes.io/part-of: bank
+    app.kubernetes.io/component: init
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+    "helm.sh/hook-weight": "-5"
+spec:
+  backoffLimit: 6
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: kafka-topic-init
+          image: apache/kafka:3.9.0
+          command:
+            - sh
+            - -c
+            - |
+              until /opt/kafka/bin/kafka-topics.sh \
+                    --bootstrap-server {{ .Values.global.kafka.bootstrapServers }} \
+                    --list > /dev/null 2>&1; do
+                echo "Waiting for Kafka broker..."
+                sleep 3
+              done
+              /opt/kafka/bin/kafka-topics.sh \
+                --bootstrap-server {{ .Values.global.kafka.bootstrapServers }} \
+                --create --if-not-exists \
+                --topic {{ .Values.global.kafka.notificationsTopic }} \
+                --partitions 1 \
+                --replication-factor 1
+              echo "Topic {{ .Values.global.kafka.notificationsTopic }} ready."
+{{- end }}
