@@ -18,6 +18,9 @@ import java.util.UUID;
 @Table(name = "outbox")
 public class OutboxEntry {
 
+    /** After this many failed attempts the entry is parked as FAILED for manual analysis. */
+    static final int MAX_ATTEMPTS = 8;
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -43,6 +46,9 @@ public class OutboxEntry {
 
     @Column(name = "processing_at")
     private OffsetDateTime processingAt;
+
+    @Column(name = "next_attempt_at")
+    private OffsetDateTime nextAttemptAt;
 
     @Column(name = "sent_at")
     private OffsetDateTime sentAt;
@@ -74,6 +80,7 @@ public class OutboxEntry {
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public OutboxStatus getStatus() { return status; }
     public OffsetDateTime getProcessingAt() { return processingAt; }
+    public OffsetDateTime getNextAttemptAt() { return nextAttemptAt; }
     public OffsetDateTime getSentAt() { return sentAt; }
     public int getAttempts() { return attempts; }
     public int getVersion() { return version; }
@@ -86,10 +93,22 @@ public class OutboxEntry {
     public void markSent() {
         this.status = OutboxStatus.SENT;
         this.sentAt = OffsetDateTime.now();
+        this.processingAt = null;
     }
 
     public void markFailed() {
-        this.status = OutboxStatus.NEW;   // back to NEW so the next poll retries it
         this.attempts++;
+        this.processingAt = null;
+        if (this.attempts >= MAX_ATTEMPTS) {
+            this.status = OutboxStatus.FAILED;        // parked for manual analysis
+            this.nextAttemptAt = null;
+        } else {
+            this.status = OutboxStatus.NEW;           // retry later, with backoff
+            this.nextAttemptAt = OffsetDateTime.now().plusSeconds(backoffSeconds(this.attempts));
+        }
+    }
+
+    private static long backoffSeconds(int attempts) {
+        return Math.min(300L, (long) Math.pow(2, Math.min(attempts, 8)));
     }
 }

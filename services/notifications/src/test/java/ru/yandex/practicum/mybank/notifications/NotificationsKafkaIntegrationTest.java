@@ -6,6 +6,7 @@ import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.awaitility.Awaitility;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,6 +37,13 @@ class NotificationsKafkaIntegrationTest extends AbstractNotificationsIntegration
         props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
         props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
         producer = new KafkaProducer<>(props);
+    }
+
+    @AfterEach
+    void tearDown() {
+        if (producer != null) {
+            producer.close(java.time.Duration.ofSeconds(5));
+        }
     }
 
     private void send(String key, String payload) throws Exception {
