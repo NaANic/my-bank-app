@@ -167,6 +167,9 @@ spec:
               app.kubernetes.io/name: notifications
         - podSelector:
             matchLabels:
+              app.kubernetes.io/component: init
+        - podSelector:
+            matchLabels:
               app.kubernetes.io/component: test
       ports:
         - protocol: TCP

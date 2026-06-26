@@ -104,13 +104,6 @@
                 </configuration>
                 <executions>
                     <execution>
-                        <id>convert-and-generate-tests</id>
-                        <goals>
-                            <goal>convert</goal>
-                            <goal>generateTests</goal>
-                        </goals>
-                    </execution>
-                    <execution>
                         <id>generate-stubs-during-test-phase</id>
                         <phase>test</phase>
                         <goals>
