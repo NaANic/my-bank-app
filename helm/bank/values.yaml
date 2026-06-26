@@ -46,6 +46,9 @@ global:
     bootstrapServers: "kafka:9092"
     notificationsTopic: notifications
 
+  zipkin:
+    endpoint: "http://zipkin:9411/api/v2/spans"
+
 # --- subchart toggles + overrides ------------------------------------------
 
 postgres:
@@ -71,6 +74,9 @@ gateway:
     nodePort: 30080
 
 kafka:
+  enabled: true
+
+zipkin:
   enabled: true
 
 networkPolicy:
