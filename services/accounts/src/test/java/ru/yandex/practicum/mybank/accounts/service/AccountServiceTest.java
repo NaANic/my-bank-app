@@ -119,7 +119,7 @@ class AccountServiceTest {
         assertThat(dto.balance()).isEqualByComparingTo("150.00");
         ArgumentCaptor<OutboxEntry> captor = ArgumentCaptor.forClass(OutboxEntry.class);
         verify(outbox).save(captor.capture());
-        assertThat(captor.getValue().getKind()).isEqualTo("balance_credit");
+        assertThat(captor.getValue().getKind()).isEqualTo("BALANCE_CREDIT");
         assertThat(captor.getValue().getLogin()).isEqualTo("alice");
     }
 
@@ -144,7 +144,7 @@ class AccountServiceTest {
 
         ArgumentCaptor<OutboxEntry> captor = ArgumentCaptor.forClass(OutboxEntry.class);
         verify(outbox).save(captor.capture());
-        assertThat(captor.getValue().getKind()).isEqualTo("balance_debit");
+        assertThat(captor.getValue().getKind()).isEqualTo("BALANCE_DEBIT");
     }
 
     @Test

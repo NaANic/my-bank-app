@@ -1,21 +1,29 @@
 package ru.yandex.practicum.mybank.common;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.security.oauth2.client.servlet.OAuth2ClientAutoConfiguration;
 import org.springframework.context.annotation.Bean;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.oauth2.client.AuthorizedClientServiceOAuth2AuthorizedClientManager;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientManager;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientProvider;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientProviderBuilder;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
-import org.springframework.web.client.RestClient;
 
-@AutoConfiguration
+@AutoConfiguration(after = OAuth2ClientAutoConfiguration.class)
 public class CommonClientAutoConfiguration {
 
+    /**
+     * Provided only for services that act as an OAuth2 client (have client registrations),
+     * i.e. cash/transfer calling accounts. accounts no longer needs it (notifications go via Kafka).
+     */
     @Bean
+    @ConditionalOnBean(ClientRegistrationRepository.class)
     @ConditionalOnMissingBean
     public OAuth2AuthorizedClientManager authorizedClientManager(
             ClientRegistrationRepository clientRegistrationRepository,
@@ -35,9 +43,9 @@ public class CommonClientAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean
     public NotificationsClient notificationsClient(
-            RestClient.Builder restClientBuilder,
-            OAuth2AuthorizedClientManager authorizedClientManager,
-            @Value("${bank.notifications-base-url}") String notificationsBaseUrl) {
-        return new NotificationsClient(restClientBuilder, authorizedClientManager, notificationsBaseUrl);
+            KafkaTemplate<String, String> kafkaTemplate,
+            ObjectMapper objectMapper,
+            @Value("${bank.notifications-topic:notifications}") String topic) {
+        return new NotificationsClient(kafkaTemplate, objectMapper, topic);
     }
 }

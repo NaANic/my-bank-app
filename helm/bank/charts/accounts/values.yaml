@@ -14,27 +14,17 @@ global:
     issuerUri: "http://localhost:8090/realms/bank"
     jwkSetUri: "http://keycloak:8090/realms/bank/protocol/openid-connect/certs"
     tokenUri: "http://keycloak:8090/realms/bank/protocol/openid-connect/token"
-
+  kafka:
+    bootstrapServers: "kafka:9092"
+    notificationsTopic: notifications
 image:
   repository: accounts
   tag: ""          # "" -> falls back to global.image.tag
-
 replicaCount: 1
-
 service:
   port: 8081
-
-# OAuth2 client-credentials identity used for service-to-service calls.
-oauth:
-  clientId: accounts
-  clientSecret: accounts-service-secret
-
-# Base URL of the notifications service (Kubernetes DNS name + port).
-notificationsBaseUrl: "http://notifications:8085"
-
 # Secret (from the postgres subchart) that holds the DB password.
 postgresSecretName: postgres
-
 resources:
   requests:
     cpu: 100m

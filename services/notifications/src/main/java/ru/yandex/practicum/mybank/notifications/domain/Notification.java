@@ -18,6 +18,9 @@ public class Notification {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "event_id", nullable = false, unique = true)
+    private String eventId;
+
     @Column(name = "login", nullable = false)
     private String login;
 
@@ -33,13 +36,15 @@ public class Notification {
 
     protected Notification() {}
 
-    public Notification(String login, String kind, String message) {
+    public Notification(String eventId, String login, String kind, String message) {
+        this.eventId = eventId;
         this.login = login;
         this.kind = kind;
         this.message = message;
     }
 
     public Long getId() { return id; }
+    public String getEventId() { return eventId; }
     public String getLogin() { return login; }
     public String getKind() { return kind; }
     public String getMessage() { return message; }

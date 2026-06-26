@@ -1,22 +1,4 @@
-spring:
-  security:
-    oauth2:
-      client:
-        registration:
-          notifications-service:
-            client-id: accounts
-            client-secret: test
-            authorization-grant-type: client_credentials
-            scope: bank:service
-            provider: keycloak
-        provider:
-          keycloak:
-            token-uri: http://localhost:0/dummy
-            authorization-uri: http://localhost:0/dummy/auth
-            jwk-set-uri: http://localhost:0/dummy/jwks
-
 bank:
-  notifications-base-url: http://localhost:0
   outbox:
     enabled: false
 

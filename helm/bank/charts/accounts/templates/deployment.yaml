@@ -36,8 +36,6 @@ spec:
           envFrom:
             - configMapRef:
                 name: accounts
-            - secretRef:
-                name: accounts
           env:
             - name: PG_PASSWORD
               valueFrom:

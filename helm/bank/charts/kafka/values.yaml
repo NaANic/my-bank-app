@@ -1,0 +1,26 @@
+# Defaults for standalone installs; the umbrella supplies global.* otherwise.
+global:
+  image:
+    pullPolicy: IfNotPresent
+
+image:
+  repository: apache/kafka
+  tag: "3.9.0"
+
+service:
+  port: 9092
+
+clusterId: bank-kafka-cluster-01
+
+persistence:
+  enabled: true
+  size: 1Gi
+  storageClassName: ""   # "" = default StorageClass
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 512Mi
+  limits:
+    cpu: "1"
+    memory: 1Gi

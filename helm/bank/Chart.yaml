@@ -1,6 +1,6 @@
 apiVersion: v2
 name: bank
-description: Umbrella Helm chart for the "Bank" microservices application (Sprint 10)
+description: Umbrella Helm chart for the "Bank" microservices application (Sprint 11, Kafka notifications)
 type: application
 version: 0.1.0
 appVersion: "0.0.1"
@@ -34,3 +34,7 @@ dependencies:
     version: 0.1.0
     repository: "file://charts/gateway"
     condition: gateway.enabled
+  - name: kafka
+    version: 0.1.0
+    repository: "file://charts/kafka"
+    condition: kafka.enabled
