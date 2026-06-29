@@ -1,0 +1,17 @@
+# Defaults for standalone installs; the umbrella supplies global.* otherwise.
+global:
+  image:
+    pullPolicy: IfNotPresent
+image:
+  repository: grafana/grafana
+  tag: "11.1.0"
+service:
+  port: 3000
+prometheusUrl: "http://prometheus:9090"
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: "1"
+    memory: 768Mi

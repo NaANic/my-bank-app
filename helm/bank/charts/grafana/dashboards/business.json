@@ -1,0 +1,22 @@
+{
+  "uid": "bank-business",
+  "title": "Bank — Business metrics",
+  "schemaVersion": 39,
+  "version": 1,
+  "time": { "from": "now-6h", "to": "now" },
+  "refresh": "10s",
+  "panels": [
+    { "id": 1, "type": "timeseries", "title": "Failed withdrawals by login",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [ { "refId": "A", "expr": "sum by (login) (bank_cash_withdraw_failed_total)", "legendFormat": "{{login}}" } ] },
+    { "id": 2, "type": "timeseries", "title": "Failed transfers by from/to",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [ { "refId": "A", "expr": "sum by (from, to) (bank_transfer_failed_total)", "legendFormat": "{{from}} to {{to}}" } ] },
+    { "id": 3, "type": "timeseries", "title": "Failed notifications by login",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [ { "refId": "A", "expr": "sum by (login) (bank_notification_failed_total)", "legendFormat": "{{login}}" } ] }
+  ]
+}

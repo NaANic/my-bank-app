@@ -90,3 +90,9 @@ prometheus:
   service:
     type: NodePort
     nodePort: 30090
+
+grafana:
+  enabled: true
+  service:
+    type: NodePort
+    nodePort: 30030
