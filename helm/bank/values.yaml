@@ -81,3 +81,6 @@ zipkin:
 
 networkPolicy:
   enabled: true
+
+front-ui:
+  enabled: true

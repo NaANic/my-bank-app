@@ -42,3 +42,7 @@ dependencies:
     version: 0.1.0
     repository: "file://charts/zipkin"
     condition: zipkin.enabled
+  - name: front-ui
+    version: 0.1.0
+    repository: "file://charts/front-ui"
+    condition: front-ui.enabled
