@@ -58,3 +58,7 @@ dependencies:
     version: 0.1.0
     repository: "file://charts/elasticsearch"
     condition: elasticsearch.enabled
+  - name: logstash
+    version: 0.1.0
+    repository: "file://charts/logstash"
+    condition: logstash.enabled

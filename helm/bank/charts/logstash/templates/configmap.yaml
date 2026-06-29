@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: logstash
+  labels:
+    app.kubernetes.io/name: logstash
+    app.kubernetes.io/component: logging
+data:
+  logstash.yml: |
+    http.host: "0.0.0.0"
+    pipeline.ecs_compatibility: disabled
+  pipeline.conf: |
+    input {
+      tcp {
+        port => 5000
+        codec => json_lines
+      }
+    }
+    filter {
+      # Mask account numbers (12-20 digit sequences) in the message.
+      mutate {
+        gsub => ["message", "\b\d{12,20}\b", "****"]
+      }
+    }
+    output {
+      elasticsearch {
+        hosts => ["{{ .Values.elasticsearchUrl }}"]
+        index => "bank-logs-%{+YYYY.MM.dd}"
+      }
+    }

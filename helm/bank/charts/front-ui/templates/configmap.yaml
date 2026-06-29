@@ -11,3 +11,4 @@ data:
   OAUTH_USERINFO_URI: {{ .Values.oauth.userInfoUri | quote }}
   GATEWAY_URL: {{ .Values.gatewayUrl | quote }}
   ZIPKIN_ENDPOINT: {{ .Values.global.zipkin.endpoint | quote }}
+  LOGSTASH_DESTINATION: {{ .Values.global.logstash.destination | quote }}

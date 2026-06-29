@@ -12,3 +12,4 @@ data:
   KAFKA_BOOTSTRAP_SERVERS: {{ .Values.global.kafka.bootstrapServers | quote }}
   BANK_NOTIFICATIONS_TOPIC: {{ .Values.global.kafka.notificationsTopic | quote }}
   ZIPKIN_ENDPOINT: {{ .Values.global.zipkin.endpoint | quote }}
+  LOGSTASH_DESTINATION: {{ .Values.global.logstash.destination | quote }}

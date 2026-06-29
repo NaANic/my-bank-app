@@ -1,0 +1,66 @@
+{{- if .Values.networkPolicy.enabled }}
+{{- if .Values.logstash.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: logstash
+  labels:
+    app.kubernetes.io/part-of: bank
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: logstash
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: accounts
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: cash
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: transfer
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: notifications
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: gateway
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: front-ui
+      ports:
+        - protocol: TCP
+          port: 5000
+{{- end }}
+{{- if .Values.elasticsearch.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: elasticsearch
+  labels:
+    app.kubernetes.io/part-of: bank
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: elasticsearch
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: logstash
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: kibana
+      ports:
+        - protocol: TCP
+          port: 9200
+{{- end }}
+{{- end }}

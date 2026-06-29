@@ -1,0 +1,18 @@
+# Defaults for standalone installs; the umbrella supplies global.* otherwise.
+global:
+  image:
+    pullPolicy: IfNotPresent
+image:
+  repository: docker.elastic.co/logstash/logstash
+  tag: "8.15.0"
+service:
+  port: 5000
+elasticsearchUrl: "http://elasticsearch:9200"
+lsJavaOpts: "-Xms256m -Xmx256m"
+resources:
+  requests:
+    cpu: 200m
+    memory: 512Mi
+  limits:
+    cpu: "1"
+    memory: 1Gi

@@ -48,6 +48,8 @@ global:
 
   zipkin:
     endpoint: "http://zipkin:9411/api/v2/spans"
+  logstash:
+    destination: "logstash:5000"
 
 # --- subchart toggles + overrides ------------------------------------------
 
@@ -98,4 +100,7 @@ grafana:
     nodePort: 30030
 
 elasticsearch:
+  enabled: true
+
+logstash:
   enabled: true
