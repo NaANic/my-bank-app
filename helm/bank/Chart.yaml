@@ -54,3 +54,7 @@ dependencies:
     version: 0.1.0
     repository: "file://charts/grafana"
     condition: grafana.enabled
+  - name: elasticsearch
+    version: 0.1.0
+    repository: "file://charts/elasticsearch"
+    condition: elasticsearch.enabled
