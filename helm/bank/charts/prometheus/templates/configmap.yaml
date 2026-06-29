@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus
+  labels:
+    app.kubernetes.io/name: prometheus
+    app.kubernetes.io/component: metrics
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: {{ .Values.scrapeIntervalSeconds }}s
+    scrape_configs:
+      - job_name: 'bank-services'
+        metrics_path: /actuator/prometheus
+        static_configs:
+          - targets: ['accounts:8081']
+            labels: {service: accounts}
+          - targets: ['cash:8083']
+            labels: {service: cash}
+          - targets: ['transfer:8084']
+            labels: {service: transfer}
+          - targets: ['notifications:8085']
+            labels: {service: notifications}
+          - targets: ['gateway:8080']
+            labels: {service: gateway}
+          - targets: ['front-ui:8082']
+            labels: {service: front-ui}

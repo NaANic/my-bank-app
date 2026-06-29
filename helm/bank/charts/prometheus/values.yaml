@@ -1,0 +1,17 @@
+# Defaults for standalone installs; the umbrella supplies global.* otherwise.
+global:
+  image:
+    pullPolicy: IfNotPresent
+image:
+  repository: prom/prometheus
+  tag: "v2.54.1"
+service:
+  port: 9090
+scrapeIntervalSeconds: 15
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: "1"
+    memory: 768Mi

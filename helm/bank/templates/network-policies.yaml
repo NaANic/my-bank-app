@@ -56,6 +56,9 @@ spec:
         - podSelector:
             matchLabels:
               app.kubernetes.io/component: test
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: metrics
       ports:
         - protocol: TCP
           port: 8081
@@ -79,6 +82,9 @@ spec:
         - podSelector:
             matchLabels:
               app.kubernetes.io/component: test
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: metrics
       ports:
         - protocol: TCP
           port: 8085
@@ -105,6 +111,9 @@ spec:
         - podSelector:
             matchLabels:
               app.kubernetes.io/component: test
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: metrics
       ports:
         - protocol: TCP
           port: 8083
@@ -131,6 +140,9 @@ spec:
         - podSelector:
             matchLabels:
               app.kubernetes.io/component: test
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: metrics
       ports:
         - protocol: TCP
           port: 8084
@@ -204,6 +216,9 @@ spec:
         - podSelector:
             matchLabels:
               app.kubernetes.io/name: gateway
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: front-ui
         - podSelector:
             matchLabels:
               app.kubernetes.io/component: test

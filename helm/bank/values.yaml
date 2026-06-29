@@ -84,3 +84,9 @@ networkPolicy:
 
 front-ui:
   enabled: true
+
+prometheus:
+  enabled: true
+  service:
+    type: NodePort
+    nodePort: 30090
