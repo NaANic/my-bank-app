@@ -1,0 +1,16 @@
+# Defaults for standalone installs; the umbrella supplies global.* otherwise.
+global:
+  image:
+    pullPolicy: IfNotPresent
+image:
+  repository: openzipkin/zipkin
+  tag: "3"
+service:
+  port: 9411
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: "1"
+    memory: 768Mi

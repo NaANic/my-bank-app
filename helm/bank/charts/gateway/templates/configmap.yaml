@@ -8,3 +8,5 @@ data:
   ACCOUNTS_URI: {{ .Values.routes.accountsUri | quote }}
   CASH_URI: {{ .Values.routes.cashUri | quote }}
   TRANSFER_URI: {{ .Values.routes.transferUri | quote }}
+  ZIPKIN_ENDPOINT: {{ .Values.global.zipkin.endpoint | quote }}
+  LOGSTASH_DESTINATION: {{ .Values.global.logstash.destination | quote }}

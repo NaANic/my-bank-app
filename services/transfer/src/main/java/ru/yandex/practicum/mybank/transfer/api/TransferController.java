@@ -1,5 +1,6 @@
 package ru.yandex.practicum.mybank.transfer.api;
 
+import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.validation.Valid;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -13,9 +14,11 @@ import ru.yandex.practicum.mybank.transfer.client.AccountsClient;
 public class TransferController {
 
     private final AccountsClient accounts;
+    private final MeterRegistry meterRegistry;
 
-    public TransferController(AccountsClient accounts) {
+    public TransferController(AccountsClient accounts, MeterRegistry meterRegistry) {
         this.accounts = accounts;
+        this.meterRegistry = meterRegistry;
     }
 
     @PostMapping("/execute")
@@ -25,8 +28,18 @@ public class TransferController {
             throw new IllegalArgumentException("JWT has no preferred_username claim");
         }
         if (fromLogin.equals(body.toLogin())) {
+            countFailure(fromLogin, body.toLogin());
             throw new IllegalArgumentException("Cannot transfer to yourself");
         }
-        return accounts.transfer(fromLogin, body.toLogin(), body.amount());
+        try {
+            return accounts.transfer(fromLogin, body.toLogin(), body.amount());
+        } catch (RuntimeException e) {
+            countFailure(fromLogin, body.toLogin());
+            throw e;
+        }
+    }
+
+    private void countFailure(String from, String to) {
+        meterRegistry.counter("bank.transfer.failed", "from", from, "to", to).increment();
     }
 }

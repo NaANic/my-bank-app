@@ -387,14 +387,17 @@
       "serviceAccountsEnabled": false,
       "redirectUris": [
         "http://localhost:8082/login/oauth2/code/keycloak",
-        "http://localhost:8082/*"
+        "http://localhost:8082/*",
+        "http://localhost:30082/login/oauth2/code/keycloak",
+        "http://localhost:30082/*"
       ],
       "webOrigins": [
         "http://localhost:8082",
-        "+"
+        "+",
+        "http://localhost:30082"
       ],
       "attributes": {
-        "post.logout.redirect.uris": "http://localhost:8082/*"
+        "post.logout.redirect.uris": "http://localhost:8082/*##http://localhost:30082/*"
       },
       "defaultClientScopes": [
         "web-origins",

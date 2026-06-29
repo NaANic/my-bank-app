@@ -1,134 +1,94 @@
-# my-bank-app — Спринт 11 (Apache Kafka, ревью исправлено)
+# my-bank-app — Спринт 12 (наблюдаемость: Zipkin, Prometheus, Grafana, ELK)
 
-Учебное банковское приложение из пяти микросервисов на Spring Boot 3.5 за
-шлюзом Spring Cloud Gateway, с Keycloak (OAuth 2.1) для аутентификации
-пользователей и сервис-сервисного взаимодействия, единым PostgreSQL по схеме
-«отдельная схема на сервис», развёрнутое в Kubernetes зонтичным Helm-чартом.
+Микросервисное банковское приложение из пяти микросервисов на Spring Boot 3.5 за
+шлюзом Spring Cloud Gateway, с Keycloak (OAuth 2.1), PostgreSQL (схема на сервис)
+и Apache Kafka (уведомления). Всё приложение и весь стек наблюдаемости
+развёрнуты в Kubernetes одним зонтичным Helm-чартом.
 
-В одиннадцатом спринте уведомления доставляются в сервис Notifications через
-Apache Kafka. Микросервис Accounts публикует события через **транзакционный
-outbox** с **атомарным claim** (`FOR UPDATE SKIP LOCKED`), что гарантирует
-надёжную доставку при любом числе реплик и исключает дублирование в Kafka. Cash
-и Transfer вызывают только Accounts и к Kafka не обращаются. Consümer
-Notifications реализует **идемпотентность** по `eventId` и валидацию полей.
-Топик создаётся Helm Job'ом, а не внутри приложения.
+В двенадцатом спринте добавлена полная наблюдаемость: распределённый трейсинг
+(**Zipkin** + Micrometer Tracing), метрики и алерты (**Prometheus** +
+**Grafana**), сбор и анализ логов (**ELK**: Elasticsearch, Logstash, Kibana).
+Единый формат логов с `traceId`/`spanId` (паттерн Microservice Chassis) связывает
+логи в Kibana с трейсами в Zipkin.
 
 ---
 
-## Что изменилось по сравнению со Спринтом 10
+## Что добавлено в Спринте 12
 
-| Область | Спринт 10 | Спринт 11 |
+| Область | Реализация |
+|---|---|
+| Трейсинг | Micrometer Tracing + Brave → Zipkin (HTTP вход/выход, JDBC, Kafka) |
+| Метрики | Micrometer + Actuator → Prometheus (`/actuator/prometheus`) |
+| Дашборды | Grafana с провижинингом datasource + дашборды HTTP/JVM/бизнес |
+| Алерты | Prometheus alert rules (downtime, 5xx, всплески ошибок операций) |
+| Логи | Logback (`logstash-logback-encoder`) → Logstash → Elasticsearch → Kibana |
+| Chassis | общий `logback-spring.xml` в `infra/common`, единый паттерn с trace/span |
+| front-ui | внесён в кластер (NodePort) — инструментирован наравне с сервисами |
+
+---
+
+## Доступ к UI (NodePort)
+
+| Компонент | URL | Назначение |
 |---|---|---|
-| Доставка уведомлений | REST (Client Credentials) | Apache Kafka, топик `notifications` |
-| Надёжность | best-effort в cash/transfer | транзакционный outbox в accounts (`FOR UPDATE SKIP LOCKED`) |
-| Payload | `{login, kind, message}` — строка | `{eventId, login, kind, amount, currency, createdAt}` — структура |
-| Idempotency | нет | `eventId` + уникальный индекс в notifications |
-| Notifications | resource-server + REST | только Kafka-консьюмер (HTTP только для actuator) |
-| Accounts | OAuth-клиент для notifications | не OAuth-клиент; пишет outbox в одной транзакции |
-| Cash / Transfer | OAuth-клиент для accounts + Kafka-продюсер | OAuth-клиент только для accounts |
-| Создание топика | `NewTopic` бин в приложении | Helm Job (`kafka-topics.sh`, post-install/post-upgrade hook) |
+| Front-UI | http://localhost:30082 | веб-интерфейс банка (вход через Keycloak) |
+| Gateway | http://localhost:30080 | API-шлюз |
+| Zipkin | http://localhost:30411 | трейсы (UI редиректит на /zipkin/) |
+| Prometheus | http://localhost:30090 | метрики, targets, alerts |
+| Grafana | http://localhost:30030 | дашборды (анонимный вход, Admin) |
+| Kibana | http://localhost:30056 | поиск и визуализация логов |
+| Keycloak | http://localhost:8090 | сервер авторизации (на хосте) |
+
+Учётные данные пользователей: `alice / alice`, `bob / bob`.
 
 ---
 
-## Apache Kafka
+## Трейсинг (Zipkin)
 
-- **KRaft, одна нода** (без ZooKeeper). Kafka запускается в docker-compose
-  (именованный том) и в Kubernetes (StatefulSet + PVC) — содержимое топиков
-  переживает перезапуск.
-- **Топик `notifications`** создаётся Helm Job'ом (`kafka-topic-init`) с
-  `--if-not-exists`. Это инфраструктурная ответственность, отделённая от
-  жизненного цикла consumer-сервиса.
-- **Продюсер** (`NotificationsClient` в `infra/common`): `acks=all` +
-  идемпотентность, блокирующее ожидание подтверждения — **at-least-once**.
-  Продюсер вызывается только из `OutboxPoller` сервиса Accounts.
-- **Транзакционный outbox** в Accounts: событие записывается в таблицу `outbox`
-  в **той же транзакции**, что и изменение баланса. `OutboxPoller` атомарно
-  забирает записи (`FOR UPDATE SKIP LOCKED`, статусы `NEW→PROCESSING→SENT`)
-  и публикует их в Kafka. При нескольких репликах каждую запись обработает
-  ровно одна реплика. Нативные запросы квалифицированы схемой (`accounts.outbox`),
-  так как нативный SQL не использует `default_schema` Hibernate.
-- **Retry с backoff и восстановление**: при ошибке публикации запись
-  возвращается в `NEW` с экспоненциальной задержкой (`next_attempt_at`), а после
-  лимита попыток паркуется в `FAILED` для ручного анализа. Отдельный scheduled
-  `recoverStale` возвращает «зависшие» `PROCESSING` (сбой между claim и
-  markSent/markFailed) обратно в `NEW` — повторная отправка безопасна благодаря
-  идемпотентности consumer по `eventId`.
-- **Консьюмер** (`NotificationListener`): группа `notifications`, `ack-mode=RECORD`
-  — оффсет коммитится после записи в БД. Поле `eventId` с уникальным индексом
-  обеспечивает идемпотентность: повторная доставка одного события игнорируется.
-  Валидация обязательных полей (`eventId`, `login`, `kind`) после десериализации
-  — некорректные сообщения логируются и пропускаются.
+- Зависимости (chassis, в родительском pom для всех модулей):
+  `micrometer-tracing-bridge-brave`, `zipkin-reporter-brave`; для accounts и
+  notifications дополнительно `datasource-micrometer-spring-boot` (трейсинг JDBC).
+- Сэмплирование 100% (`management.tracing.sampling.probability=1.0`),
+  endpoint — `ZIPKIN_ENDPOINT` (в кластере `http://zipkin:9411/api/v2/spans`).
+- Трейсятся: входящие/исходящие HTTP, запросы в БД (`connection`, `query`,
+  `result-set`), Kafka (`notifications send` у accounts, `notifications receive`
+  у notifications). Front-UI генерирует корневой trace при входе пользователя.
+- В Zipkin UI: Run Query → видны цепочки `front-ui → gateway → cash → accounts → kafka → notifications`.
 
----
+## Метрики (Prometheus)
 
-## Архитектура
+- Каждый сервис и front-ui отдают `/actuator/prometheus`; Prometheus скрейпит их
+  по ClusterIP DNS (job `bank-services`, 6 targets).
+- Стандартные метрики: HTTP (RPS, 4xx, 5xx, гистограммы для персентилей), JVM
+  (память, CPU), метрики Spring Boot.
+- Кастомные бизнес-метрики:
+  - `bank_cash_withdraw_failed_total{login}` — неуспешные снятия;
+  - `bank_transfer_failed_total{from,to}` — неуспешные переводы;
+  - `bank_notification_failed_total{login}` — сбой сохранения уведомления.
+- Алерты (`/etc/prometheus/rules/alerts.yml`): `ServiceDown`,
+  `HighServerErrorRate`, `FailedWithdrawalsSpike`, `FailedTransfersSpike`.
 
-```
-                          (вне кластера)
-   браузер ─────► Front-UI :8082 ─► Gateway NodePort :30080
-                   (Thymeleaf,            │
-                    oauth2Login)          │ внутри кластера
-   ───────────────────────────────────────┼──────────────────────────────
-                                          ▼  (DNS Service, ClusterIP)
-                                  ┌──────────────┐
-                                  │   gateway    │  Spring Cloud Gateway
-                                  │   :8080      │  /accounts/** /cash/**
-                                  └──────┬───────┘  /transfer/**
-                      ┌──────────────────┼──────────────────┐
-                      ▼                  ▼                  ▼
-                ┌──────────┐       ┌──────────┐       ┌──────────┐
-                │ accounts │◄──────│   cash   │       │ transfer │
-                │  :8081   │       │  :8083   │──────►│  :8084   │
-                │ +outbox  │       └──────────┘       └──────────┘
-                └────┬─────┘    (только вызывают accounts,
-                     │           в Kafka не пишут)
-                     │ outbox poller (FOR UPDATE SKIP LOCKED)
-                     ▼
-               ┌───────────────┐
-               │     kafka     │  топик "notifications"
-               │  :9092 KRaft  │  (StatefulSet + PVC)
-               └───────┬───────┘  топик создаётся Helm Job'ом
-                       ▼  @KafkaListener (ack-mode=RECORD, idempotent by eventId)
-               ┌───────────────┐
-               │ notifications │  пишет в БД + лог
-               │   :8085       │
-               └───────┬───────┘
-              ┌─────────┴──────────┐
-              ▼                    ▼
-        ┌──────────────┐   ┌───────────────────┐
-        │  postgres    │   │ keycloak (ExternalName)
-        │  StatefulSet │   │ realm: bank        │──► хост :8090
-        │  схемы:      │   └───────────────────┘    (вне кластера)
-        │  accounts,   │
-        │  notifications│
-        └──────────────┘
-```
+## Дашборды (Grafana)
 
-| Сервис | Порт | Примечание |
-|---|---|---|
-| gateway | 8080 (NodePort 30080) | маршрутизация, `StripPrefix=1` |
-| accounts | 8081 | JPA + Flyway + transactional outbox → Kafka |
-| cash | 8083 | пополнение/снятие, только вызывает accounts |
-| transfer | 8084 | переводы, только вызывает accounts |
-| notifications | 8085 | Kafka-консьюмер, HTTP только actuator |
-| front-ui | 8082 | Thymeleaf + oauth2Login (на хосте) |
-| postgres | 5432 | StatefulSet, схема на сервис |
-| kafka | 9092 | StatefulSet, KRaft, топик создаёт Helm Job |
-| keycloak | 8090 | на хосте, realm импортируется |
+Провижининг при старте (datasource Prometheus + дашборды из ConfigMap):
+- **Bank — HTTP & JVM**: RPS, 4xx, 5xx, p95-латентность, JVM heap, CPU.
+- **Bank — Business metrics**: неуспешные снятия / переводы / уведомления.
+
+## Логи (ELK)
+
+- Все сервисы и front-ui шлют логи в Logstash в JSON (`logstash-logback-encoder`),
+  включается переменной `LOGSTASH_DESTINATION=logstash:5000` (chassis-logback).
+- Logstash (TCP `5000`, codec `json_lines`) маскирует номера счетов и пишет в
+  Elasticsearch индексом `bank-logs-YYYY.MM.dd`.
+- В каждом документе есть `appName`, `traceId`, `spanId`, `message`, `level` —
+  поиск по `traceId` в Kibana связывает логи с трейсом из Zipkin.
+- Единый паттерн консоли: `%d %5p [appName,traceId,spanId] logger : msg`.
 
 ---
 
-## Требования
+## Развёртывание в Kubernetes
 
-- Docker Desktop с **включённым Kubernetes** (контекст `docker-desktop`)
-- `kubectl` и `helm` v3
-- JDK 21 и Maven (только для сборки / локального запуска)
-
----
-
-## Развёртывание в Kubernetes через Helm
-
-### 1. Сборка образов
+### 1. Сборка образов приложений
 
 ```bash
 docker build -t accounts:0.0.1      -f services/accounts/Dockerfile .
@@ -136,16 +96,21 @@ docker build -t cash:0.0.1          -f services/cash/Dockerfile .
 docker build -t transfer:0.0.1      -f services/transfer/Dockerfile .
 docker build -t notifications:0.0.1 -f services/notifications/Dockerfile .
 docker build -t gateway:0.0.1       -f infra/gateway/Dockerfile .
+docker build -t front-ui:0.0.1      -f services/front-ui/Dockerfile .
 ```
 
-### 2. Запуск Keycloak на хосте
+Образы инфраструктуры (Zipkin, Prometheus, Grafana, Elasticsearch, Logstash,
+Kibana, Kafka, Postgres) тянутся из публичных реестров.
+
+> Docker Desktop: выделите Kubernetes ≥ 8 ГБ памяти (ELK прожорлив).
+
+### 2. Keycloak на хосте
 
 ```bash
 docker compose up -d keycloak
 curl -s -o /dev/null -w "%{http_code}\n" \
-  http://localhost:8090/realms/bank/.well-known/openid-configuration
+  http://localhost:8090/realms/bank/.well-known/openid-configuration   # 200
 ```
-Ожидается `200`.
 
 ### 3. Установка чарта
 
@@ -156,9 +121,8 @@ helm install bank helm/bank -n bank
 kubectl get pods -n bank -w
 ```
 
-После `helm install` автоматически запускается Helm post-install Job
-`kafka-topic-init`, который создаёт топик `notifications` через
-`kafka-topics.sh --if-not-exists`.
+Post-install Job `kafka-topic-init` создаёт топик `notifications`.
+Elasticsearch/Kibana стартуют дольше остальных (1–2 мин).
 
 ### 4. Проверка Helm-тестами
 
@@ -166,28 +130,26 @@ kubectl get pods -n bank -w
 helm test bank -n bank
 ```
 
-- **connectivity-test** — TCP к `postgres:5432` и `kafka:9092` + `/actuator/health` каждого сервиса.
-- **e2e-notification-test** — проверяет, что notifications `UP` (consumer запущен).
-- **gateway-route-test** — проходит по маршрутам через `/<svc>/actuator/health`.
+- **connectivity-test** — TCP/health всех компонентов, включая Zipkin,
+  Prometheus, Grafana, Elasticsearch, Logstash, Kibana.
+- **e2e-notification-test** — consumer notifications запущен.
+- **gateway-route-test** — маршруты gateway.
 
-### 5. Проверка e2e через NodePort
+### 5. Демонстрация наблюдаемости
 
 ```bash
+# трафик
 TOKEN=$(curl -s -X POST http://localhost:8090/realms/bank/protocol/openid-connect/token \
   -d grant_type=password -d client_id=front-ui -d client_secret=front-ui-secret \
   -d username=alice -d password=alice | sed -n 's/.*"access_token":"\([^"]*\)".*/\1/p')
-
-curl -s -i -X POST http://localhost:30080/cash/deposit \
-  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-  -d '{"amount":100.00}'
-
-sleep 6
-kubectl logs -n bank deploy/notifications --tail 5
+curl -s -X POST http://localhost:30080/cash/deposit \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d '{"amount":100.00}'
 ```
 
-Ожидаемо: HTTP `200`, в логе notifications — `kind=BALANCE_CREDIT
-message=Пополнение наличными: alice внёс 100.00 RUB` (событие прошло через
-outbox accounts → Kafka → консьюмер notifications).
+- Zipkin → http://localhost:30411 → Run Query (видны цепочки между сервисами).
+- Grafana → http://localhost:30030 → папка **Bank**.
+- Prometheus → http://localhost:30090 → Status → Targets / Alerts.
+- Kibana → http://localhost:30056 → Discover → data view `bank-logs-*`.
 
 ### 6. Остановка
 
@@ -199,94 +161,62 @@ docker compose down
 
 ---
 
-## Безопасность и устойчивость
-
-- **ConfigMap / Secret** — несекретные настройки и секреты отдельно на каждый сервис.
-- **NetworkPolicy** (ingress): postgres ← accounts/notifications; accounts ← gateway/cash/transfer; kafka ← accounts/cash/transfer/notifications; notifications ← только health-check (HTTP к нему не ходит никто — общение через Kafka).
-- **Transactional outbox** + `FOR UPDATE SKIP LOCKED` — надёжная доставка при любом числе реплик без дублирования в Kafka.
-- **Idempotent consumer** — `eventId` с уникальным индексом: повторная доставка игнорируется.
-- **requests/limits** для всех нагрузок (Burstable QoS).
-- **readiness/liveness** — `httpGet /actuator/health` для сервисов, TCP-проба для Kafka.
-
----
-
-## Модель конфигурации
-
-| Переменная | Кто использует | Значение в кластере |
-|---|---|---|
-| `PG_HOST` / `PG_PASSWORD` | accounts, notifications | `postgres` / из Secret |
-| `KAFKA_BOOTSTRAP_SERVERS` | accounts, cash, transfer, notifications | `kafka:9092` |
-| `BANK_NOTIFICATIONS_TOPIC` | accounts, cash, transfer, notifications | `notifications` |
-| `OAUTH_ISSUER_URI` / `OAUTH_JWK_SET_URI` | accounts, cash, transfer | Keycloak |
-| `OAUTH_TOKEN_URI` / `OAUTH_CLIENT_ID` / `OAUTH_CLIENT_SECRET` | cash, transfer | по сервису |
-| `ACCOUNTS_BASE_URL` | cash, transfer | `http://accounts:8081` |
-| `ACCOUNTS_URI` / `CASH_URI` / `TRANSFER_URI` | gateway | `http://<svc>:<port>` |
-
----
-
 ## Структура Helm-чарта
 
 ```
 helm/bank/
-├── Chart.yaml                        зонтичный чарт (Sprint 11)
-├── values.yaml                       global.* + переключатели
+├── Chart.yaml                  зонтичный чарт (Sprint 12)
+├── values.yaml                 global.* + переключатели всех подсистем
 ├── templates/
-│   ├── keycloak-service.yaml         ExternalName → host.docker.internal:8090
-│   ├── kafka-topic-init.yaml         post-install Job: kafka-topics.sh --if-not-exists
-│   ├── network-policies.yaml         ingress-матрица (+ kafka)
-│   └── tests/
-│       ├── connectivity-test.yaml    TCP postgres/kafka + actuator health
-│       ├── e2e-notification-test.yaml notifications UP (consumer работает)
-│       └── gateway-route-test.yaml   маршруты gateway
+│   ├── keycloak-service.yaml   ExternalName → host.docker.internal:8090
+│   ├── kafka-topic-init.yaml   post-install Job создания топика
+│   ├── network-policies.yaml   ingress-матрица сервисов (+ metrics, zipkin)
+│   ├── network-policies-elk.yaml  logstash ← сервисы; es ← logstash/kibana
+│   └── tests/                  connectivity / e2e-notification / gateway-route
 └── charts/
-    ├── postgres/   kafka/   accounts/   notifications/   cash/   transfer/   gateway/
+    ├── postgres/  kafka/  accounts/  notifications/  cash/  transfer/  gateway/
+    ├── front-ui/               веб-интерфейс (NodePort 30082)
+    ├── zipkin/                 трейсинг (in-memory)
+    ├── prometheus/             метрики + alert rules (NodePort 30090)
+    ├── grafana/                дашборды, провижининг (NodePort 30030)
+    ├── elasticsearch/          хранилище логов (single-node, ephemeral)
+    ├── logstash/               пайплайн логов TCP→ES
+    └── kibana/                 визуализация логов (NodePort 30056)
 ```
 
 ---
 
-## Запуск локально без Kubernetes
+## Микросервисы и взаимодействие
+
+- Front-UI (Authorization Code Flow) → Gateway (проброс JWT) → микросервисы.
+- Микросервисы между собой — Client Credentials Flow (cash/transfer → accounts).
+- Уведомления: accounts пишет событие в транзакционный outbox
+  (`FOR UPDATE SKIP LOCKED`, retry с backoff, recovery «зависших») → Kafka →
+  notifications (идемпотентно по `eventId`).
+- Микросервис может не иметь доступа к другому (cash не ходит в transfer).
+
+| Сервис | Порт | Наблюдаемость |
+|---|---|---|
+| gateway | 8080 (NodePort 30080) | metrics, traces, logs |
+| accounts | 8081 | metrics, traces (+JDBC, Kafka), logs |
+| cash | 8083 | metrics (+бизнес), traces, logs |
+| transfer | 8084 | metrics (+бизнес), traces, logs |
+| notifications | 8085 | metrics (+бизнес), traces (+JDBC, Kafka), logs |
+| front-ui | 8082 (NodePort 30082) | metrics, traces, logs |
+
+---
+
+## Сборка и тесты
 
 ```bash
-docker compose up -d postgres keycloak kafka
-mvn -s ~/central-settings.xml package -DskipTests
-java -jar services/accounts/target/accounts-0.0.1-SNAPSHOT.jar &
-java -jar infra/gateway/target/gateway-0.0.1-SNAPSHOT.jar &
-java -jar services/cash/target/cash-0.0.1-SNAPSHOT.jar &
-java -jar services/transfer/target/transfer-0.0.1-SNAPSHOT.jar &
-java -jar services/notifications/target/notifications-0.0.1-SNAPSHOT.jar &
-java -jar services/front-ui/target/front-ui-0.0.1-SNAPSHOT.jar
-# Front-UI: http://localhost:8082
+mvn -s ~/central-settings.xml install   # unit, slice, Testcontainers, EmbeddedKafka, контрактные
 ```
 
----
-
-## Тесты
-
-```bash
-mvn install   # unit, slice, интеграционные (Testcontainers + EmbeddedKafka), контрактные
-```
-
-| Сервис | Тесты |
-|---|---|
-| accounts | `AccountServiceTest` (Mockito) · `AccountsIntegrationTest` (Testcontainers) · `InternalSecurityIntegrationTest` (scope allow/deny) · контракт-продюсер |
-| cash | `CashControllerTest` (slice) · `AccountsClientContractTest` (stub-runner) |
-| transfer | `TransferControllerTest` (slice) |
-| notifications | `NotificationsKafkaIntegrationTest` (`@EmbeddedKafka` + Testcontainers): happy path, idempotency, malformed JSON, missing fields |
-| front-ui | `MainControllerTest` (`@WebMvcTest`) |
-| gateway | `GatewayApplicationTests` · `GatewayRoutingTest` |
-
----
-
-## Общий модуль `infra/common`
-
-`NotificationsClient` — Kafka-продюсер (`acks=all`, блокирующий), публикует
-`NotificationEvent {eventId, login, kind, amount, currency, createdAt}` в JSON.
-`NotificationKind` — enum (`BALANCE_CREDIT`, `BALANCE_DEBIT`,
-`BALANCE_TRANSFER_OUT`, `BALANCE_TRANSFER_IN`). Текст уведомления формирует
-consumer по полям структуры, что упрощает локализацию и анализ событий.
+В тестовом профиле трейсинг выключен (`sampling.probability=0.0`), Logstash не
+подключается (без `LOGSTASH_DESTINATION` chassis-logback пишет только в консоль).
 
 ---
 
 ## Лицензия
 
-Учебный проект (Яндекс Практикум, Спринт 11).
+Учебный проект (Яндекс Практикум, Спринт 12).

@@ -1,0 +1,31 @@
+# Defaults for standalone installs; the umbrella supplies global.* otherwise.
+global:
+  image:
+    registry: ""
+    pullPolicy: IfNotPresent
+    tag: "0.0.1"
+  keycloak:
+    jwkSetUri: "http://keycloak:8090/realms/bank/protocol/openid-connect/certs"
+    tokenUri: "http://keycloak:8090/realms/bank/protocol/openid-connect/token"
+  zipkin:
+    endpoint: "http://zipkin:9411/api/v2/spans"
+image:
+  repository: front-ui
+  tag: ""          # "" -> falls back to global.image.tag
+replicaCount: 1
+service:
+  type: NodePort
+  port: 8082
+  nodePort: 30082
+# Browser-facing authorization endpoint (the browser talks to Keycloak on the host).
+oauth:
+  authorizationUri: "http://localhost:8090/realms/bank/protocol/openid-connect/auth"
+  userInfoUri: "http://keycloak:8090/realms/bank/protocol/openid-connect/userinfo"
+gatewayUrl: "http://gateway:8080"
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: "1"
+    memory: 768Mi

@@ -1,0 +1,17 @@
+# Defaults for standalone installs; the umbrella supplies global.* otherwise.
+global:
+  image:
+    pullPolicy: IfNotPresent
+image:
+  repository: docker.elastic.co/elasticsearch/elasticsearch
+  tag: "8.15.0"
+service:
+  port: 9200
+esJavaOpts: "-Xms512m -Xmx512m"
+resources:
+  requests:
+    cpu: 200m
+    memory: 1Gi
+  limits:
+    cpu: "1"
+    memory: 2Gi

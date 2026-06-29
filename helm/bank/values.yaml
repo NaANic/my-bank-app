@@ -46,6 +46,11 @@ global:
     bootstrapServers: "kafka:9092"
     notificationsTopic: notifications
 
+  zipkin:
+    endpoint: "http://zipkin:9411/api/v2/spans"
+  logstash:
+    destination: "logstash:5000"
+
 # --- subchart toggles + overrides ------------------------------------------
 
 postgres:
@@ -73,5 +78,38 @@ gateway:
 kafka:
   enabled: true
 
+zipkin:
+  enabled: true
+  service:
+    type: NodePort
+    nodePort: 30411
+
 networkPolicy:
   enabled: true
+
+front-ui:
+  enabled: true
+
+prometheus:
+  enabled: true
+  service:
+    type: NodePort
+    nodePort: 30090
+
+grafana:
+  enabled: true
+  service:
+    type: NodePort
+    nodePort: 30030
+
+elasticsearch:
+  enabled: true
+
+logstash:
+  enabled: true
+
+kibana:
+  enabled: true
+  service:
+    type: NodePort
+    nodePort: 30056

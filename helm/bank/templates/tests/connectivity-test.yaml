@@ -39,4 +39,25 @@ spec:
           {{- if .Values.gateway.enabled }}
           echo "checking gateway health"; wget -q -O - http://gateway:8080/actuator/health | grep -q '"status":"UP"'
           {{- end }}
-          echo "all enabled services report healthy"
+          {{- if index .Values "front-ui" "enabled" }}
+          echo "checking front-ui health"; wget -q -O - http://front-ui:8082/actuator/health | grep -q '"status":"UP"'
+          {{- end }}
+          {{- if .Values.zipkin.enabled }}
+          echo "checking zipkin"; wget -q -O - http://zipkin:9411/health | grep -q '"status":"UP"'
+          {{- end }}
+          {{- if .Values.prometheus.enabled }}
+          echo "checking prometheus"; wget -q -O - http://prometheus:9090/-/ready | grep -qi ready
+          {{- end }}
+          {{- if .Values.grafana.enabled }}
+          echo "checking grafana"; wget -q -O - http://grafana:3000/api/health | grep -q '"database"'
+          {{- end }}
+          {{- if .Values.elasticsearch.enabled }}
+          echo "checking elasticsearch"; wget -q -O - http://elasticsearch:9200/_cluster/health | grep -qE '"status":"(green|yellow)"'
+          {{- end }}
+          {{- if .Values.logstash.enabled }}
+          echo "checking logstash:5000 (tcp)"; nc -z -w 5 logstash 5000
+          {{- end }}
+          {{- if .Values.kibana.enabled }}
+          echo "checking kibana"; wget -q -O - http://kibana:5601/api/status | grep -q '"level":"available"'
+          {{- end }}
+          echo "all enabled components are reachable"

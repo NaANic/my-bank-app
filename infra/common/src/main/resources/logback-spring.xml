@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Shared logging configuration (Microservice Chassis): every service that has
+  this library on the classpath logs in one unified format with trace/span ids.
+  Logs are also shipped to Logstash as JSON when LOGSTASH_DESTINATION is set
+  (e.g. in Kubernetes); locally only the console appender is active.
+-->
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+    <springProperty scope="context" name="appName" source="spring.application.name" defaultValue="app"/>
+    <property name="LOGSTASH_DESTINATION" value="${LOGSTASH_DESTINATION:-}"/>
+
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %5p [${appName},%X{traceId:-},%X{spanId:-}] %-40.40logger{39} : %m%n%wEx</pattern>
+        </encoder>
+    </appender>
+
+    <if condition='!"".equals(property("LOGSTASH_DESTINATION"))'>
+        <then>
+            <appender name="LOGSTASH" class="net.logstash.logback.appender.LogstashTcpSocketAppender">
+                <destination>${LOGSTASH_DESTINATION}</destination>
+                <keepAliveDuration>1 minute</keepAliveDuration>
+                <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+                    <customFields>{"app":"${appName}"}</customFields>
+                </encoder>
+            </appender>
+            <root level="INFO">
+                <appender-ref ref="CONSOLE"/>
+                <appender-ref ref="LOGSTASH"/>
+            </root>
+        </then>
+        <else>
+            <root level="INFO">
+                <appender-ref ref="CONSOLE"/>
+            </root>
+        </else>
+    </if>
+</configuration>
