@@ -104,3 +104,9 @@ elasticsearch:
 
 logstash:
   enabled: true
+
+kibana:
+  enabled: true
+  service:
+    type: NodePort
+    nodePort: 30056

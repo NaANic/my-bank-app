@@ -1,0 +1,17 @@
+# Defaults for standalone installs; the umbrella supplies global.* otherwise.
+global:
+  image:
+    pullPolicy: IfNotPresent
+image:
+  repository: docker.elastic.co/kibana/kibana
+  tag: "8.15.0"
+service:
+  port: 5601
+elasticsearchUrl: "http://elasticsearch:9200"
+resources:
+  requests:
+    cpu: 200m
+    memory: 512Mi
+  limits:
+    cpu: "1"
+    memory: 1Gi
