@@ -1,5 +1,6 @@
 package ru.yandex.practicum.mybank.cash.api;
 
+import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.validation.Valid;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -13,9 +14,11 @@ import ru.yandex.practicum.mybank.common.AccountSnapshot;
 public class CashController {
 
     private final AccountsClient accounts;
+    private final MeterRegistry meterRegistry;
 
-    public CashController(AccountsClient accounts) {
+    public CashController(AccountsClient accounts, MeterRegistry meterRegistry) {
         this.accounts = accounts;
+        this.meterRegistry = meterRegistry;
     }
 
     @PostMapping("/deposit")
@@ -25,7 +28,13 @@ public class CashController {
 
     @PostMapping("/withdraw")
     public AccountSnapshot withdraw(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody AmountRequest body) {
-        return accounts.debit(requireLogin(jwt), body.amount());
+        String login = requireLogin(jwt);
+        try {
+            return accounts.debit(login, body.amount());
+        } catch (RuntimeException e) {
+            meterRegistry.counter("bank.cash.withdraw.failed", "login", login).increment();
+            throw e;
+        }
     }
 
     private static String requireLogin(Jwt jwt) {
