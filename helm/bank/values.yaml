@@ -80,6 +80,9 @@ kafka:
 
 zipkin:
   enabled: true
+  service:
+    type: NodePort
+    nodePort: 30411
 
 networkPolicy:
   enabled: true
