@@ -9,6 +9,9 @@ data:
   prometheus.yml: |
     global:
       scrape_interval: {{ .Values.scrapeIntervalSeconds }}s
+      evaluation_interval: {{ .Values.scrapeIntervalSeconds }}s
+    rule_files:
+      - /etc/prometheus/rules/*.yml
     scrape_configs:
       - job_name: 'bank-services'
         metrics_path: /actuator/prometheus
@@ -25,3 +28,31 @@ data:
             labels: {service: gateway}
           - targets: ['front-ui:8082']
             labels: {service: front-ui}
+  alerts.yml: |
+    groups:
+      - name: bank-alerts
+        rules:
+          - alert: ServiceDown
+            expr: up == 0
+            for: 1m
+            labels: {severity: critical}
+            annotations:
+              summary: "Service {{`{{ $labels.service }}`}} is down"
+          - alert: HighServerErrorRate
+            expr: sum by (service) (rate(http_server_requests_seconds_count{status=~"5.."}[5m])) > 0.2
+            for: 2m
+            labels: {severity: warning}
+            annotations:
+              summary: "High 5xx rate on {{`{{ $labels.service }}`}}"
+          - alert: FailedWithdrawalsSpike
+            expr: sum(increase(bank_cash_withdraw_failed_total[5m])) > 5
+            for: 1m
+            labels: {severity: warning}
+            annotations:
+              summary: "Spike of failed withdrawals (>5 in 5m)"
+          - alert: FailedTransfersSpike
+            expr: sum(increase(bank_transfer_failed_total[5m])) > 5
+            for: 1m
+            labels: {severity: warning}
+            annotations:
+              summary: "Spike of failed transfers (>5 in 5m)"

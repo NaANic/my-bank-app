@@ -41,7 +41,11 @@ spec:
             periodSeconds: 20
           volumeMounts:
             - name: config
-              mountPath: /etc/prometheus
+              mountPath: /etc/prometheus/prometheus.yml
+              subPath: prometheus.yml
+            - name: config
+              mountPath: /etc/prometheus/rules/alerts.yml
+              subPath: alerts.yml
             - name: data
               mountPath: /prometheus
           resources:
